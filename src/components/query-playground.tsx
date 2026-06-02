@@ -40,6 +40,13 @@ export function QueryPlayground() {
     qf: "",
   });
   const [builderState, setBuilderState] = useState(DEFAULT_BUILDER_STATE);
+  const [builderImportUrl, setBuilderImportUrl] = useState("");
+  const [builderImportError, setBuilderImportError] = useState<string | null>(
+    null
+  );
+  const [builderImportWarnings, setBuilderImportWarnings] = useState<string[]>(
+    []
+  );
 
   const [committedPlan, setCommittedPlan] = useState<SearchPlan>({
     q: DEFAULT_QUERY,
@@ -252,6 +259,12 @@ export function QueryPlayground() {
             onParserChange={setParserMode}
             state={builderState}
             onChange={setBuilderState}
+            importUrl={builderImportUrl}
+            onImportUrlChange={setBuilderImportUrl}
+            importError={builderImportError}
+            onImportErrorChange={setBuilderImportError}
+            importWarnings={builderImportWarnings}
+            onImportWarningsChange={setBuilderImportWarnings}
             onRun={handleRunBuilder}
             loading={loading}
           />

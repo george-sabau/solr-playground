@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Download, Loader2, Play, Plus, Trash2, X } from "lucide-react";
+import { useMemo } from "react";
+import { ChevronRight, Download, Loader2, Play, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -303,6 +303,12 @@ export function QueryBuilderPanel({
   onParserChange,
   state,
   onChange,
+  importUrl,
+  onImportUrlChange,
+  importError,
+  onImportErrorChange,
+  importWarnings,
+  onImportWarningsChange,
   onRun,
   loading,
 }: {
@@ -312,6 +318,12 @@ export function QueryBuilderPanel({
   onParserChange: (p: QueryParserMode) => void;
   state: BuilderState;
   onChange: (next: BuilderState) => void;
+  importUrl: string;
+  onImportUrlChange: (url: string) => void;
+  importError: string | null;
+  onImportErrorChange: (error: string | null) => void;
+  importWarnings: string[];
+  onImportWarningsChange: (warnings: string[]) => void;
   onRun: () => void;
   loading: boolean;
 }) {
@@ -329,21 +341,16 @@ export function QueryBuilderPanel({
   const plan = compileBuilderSearch(state, parser);
   const showEdismax = parser === "edismax" || parser === "dismax";
 
-  const [importUrl, setImportUrl] = useState("");
-  const [importError, setImportError] = useState<string | null>(null);
-  const [importWarnings, setImportWarnings] = useState<string[]>([]);
-
   const handleImport = () => {
-    setImportError(null);
-    setImportWarnings([]);
+    onImportErrorChange(null);
+    onImportWarningsChange([]);
     try {
       const result = importBuilderFromSolrUrl(importUrl);
       onChange(result.state);
       onParserChange(result.parser);
-      setImportWarnings(result.warnings);
-      setImportUrl("");
+      onImportWarningsChange(result.warnings);
     } catch (err) {
-      setImportError(
+      onImportErrorChange(
         err instanceof ImportBuilderError
           ? err.message
           : err instanceof Error
@@ -407,53 +414,59 @@ export function QueryBuilderPanel({
         </div>
       </div>
 
-      <div className="space-y-2 rounded-lg border border-dashed border-border/80 bg-muted/10 p-3">
-        <Label htmlFor="builder-import-url" className="text-xs">
-          Import from Solr URL
-        </Label>
-        <p className="text-[11px] text-muted-foreground">
-          Paste a Solr select URL (or query string) to reverse-engineer field
-          matchers, search text, parser, and edismax settings.
-        </p>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            id="builder-import-url"
-            value={importUrl}
-            onChange={(e) => {
-              setImportUrl(e.target.value);
-              if (importError) setImportError(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleImport();
-              }
-            }}
-            placeholder="http://localhost:8983/solr/core/select?q=..."
-            spellCheck={false}
-            className="font-mono text-xs"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="shrink-0"
-            disabled={!importUrl.trim()}
-            onClick={handleImport}
-          >
-            <Download className="size-3.5" />
-            Import
-          </Button>
-        </div>
-        {importError && (
-          <p className="text-[11px] text-destructive">{importError}</p>
-        )}
-        {importWarnings.map((w) => (
-          <p key={w} className="text-[11px] text-amber-700 dark:text-amber-400">
-            {w}
+      <details className="group rounded-lg border border-dashed border-border/80 bg-muted/10">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-muted/20">
+          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90 group-open:text-[var(--solr-accent)]" />
+          Import from source URL
+        </summary>
+        <div className="space-y-2 border-t border-border/80 px-3 pb-3 pt-2">
+          <p className="text-[11px] text-muted-foreground">
+            Paste a Solr select URL (or query string) to reverse-engineer field
+            matchers, search text, parser, and edismax settings.
           </p>
-        ))}
-      </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              id="builder-import-url"
+              value={importUrl}
+              onChange={(e) => {
+                onImportUrlChange(e.target.value);
+                if (importError) onImportErrorChange(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleImport();
+                }
+              }}
+              placeholder="http://localhost:8983/solr/core/select?q=..."
+              spellCheck={false}
+              className="font-mono text-xs"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              disabled={!importUrl.trim()}
+              onClick={handleImport}
+            >
+              <Download className="size-3.5" />
+              Import
+            </Button>
+          </div>
+          {importError && (
+            <p className="text-[11px] text-destructive">{importError}</p>
+          )}
+          {importWarnings.map((w) => (
+            <p
+              key={w}
+              className="text-[11px] text-amber-700 dark:text-amber-400"
+            >
+              {w}
+            </p>
+          ))}
+        </div>
+      </details>
 
       <div className="space-y-2 rounded-lg border border-border/80 bg-muted/15 p-3">
         <Label className="text-xs">Query options</Label>
