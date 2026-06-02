@@ -1,17 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Play, Plus, Trash2, X } from "lucide-react";
+import { Download, Loader2, Play, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverHeader,
-  PopoverTitle,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -21,18 +14,27 @@ import {
 } from "@/components/ui/select";
 import {
   compileBuilderSearch,
-  compileClausesToQ,
-  describeClause,
+  describeFieldConfig,
+  isMatcherActive,
   matchModeLabel,
 } from "@/lib/query/compile";
+import {
+  ImportBuilderError,
+  importBuilderFromSolrUrl,
+} from "@/lib/query/import";
 import { getSearchableFields } from "@/lib/query/fields";
 import type {
-  BuilderClause,
+  BuilderFieldConfig,
   BuilderState,
+  FieldMatcher,
   MatchMode,
   QueryParserMode,
 } from "@/lib/query/types";
-import { createClause } from "@/lib/query/types";
+import {
+  createFieldConfig,
+  createMatcher,
+  DEFAULT_MIN_QUERY_LENGTH,
+} from "@/lib/query/types";
 import { useSchema } from "@/lib/schema/context";
 import { QueryRequestPreview } from "@/components/query-request-preview";
 import {
@@ -56,191 +58,241 @@ const MATCH_MODES: MatchMode[] = [
   "fuzzy",
 ];
 
-function ClauseEditor({
-  clause,
+function MatcherRow({
+  matcher,
+  field,
+  searchText,
+  edismaxMode,
+  canRemove,
   onChange,
   onRemove,
 }: {
-  clause: BuilderClause;
-  onChange: (next: BuilderClause) => void;
+  matcher: FieldMatcher;
+  field: BuilderFieldConfig;
+  searchText: string;
+  edismaxMode: boolean;
+  canRemove: boolean;
+  onChange: (next: FieldMatcher) => void;
   onRemove: () => void;
 }) {
+  const active = isMatcherActive(matcher, field, searchText);
+
   return (
-    <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="font-mono text-xs font-semibold text-[var(--solr-accent-muted)]">
-          {clause.field}
+    <div
+      className={cn(
+        "flex flex-wrap items-end gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1.5",
+        !active && searchText.trim() && "opacity-60"
+      )}
+    >
+      <div className="grid gap-1">
+        <Label className="text-[10px]">Match</Label>
+        <Select
+          value={matcher.mode}
+          onValueChange={(v) => onChange({ ...matcher, mode: v as MatchMode })}
+        >
+          <SelectTrigger className="h-7 w-[7.5rem] text-[11px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {MATCH_MODES.map((m) => (
+              <SelectItem key={m} value={m}>
+                {matchModeLabel(m)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-1">
+        <Label className="text-[10px]">Boost</Label>
+        <Input
+          type="number"
+          min={0}
+          step={0.1}
+          value={matcher.boost}
+          onChange={(e) =>
+            onChange({
+              ...matcher,
+              boost: Math.max(0, Number(e.target.value) || 0),
+            })
+          }
+          className="h-7 w-14 font-mono text-[11px]"
+        />
+      </div>
+      <div className="grid gap-1">
+        <Label className="text-[10px]">Min length</Label>
+        <Input
+          type="number"
+          min={0}
+          max={64}
+          step={1}
+          placeholder={String(
+            field.minLength ?? DEFAULT_MIN_QUERY_LENGTH
+          )}
+          value={matcher.minLength ?? ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            onChange({
+              ...matcher,
+              minLength: v === "" ? undefined : Math.max(0, Number(v) || 0),
+            });
+          }}
+          className="h-7 w-14 font-mono text-[11px]"
+        />
+      </div>
+      {matcher.mode === "fuzzy" && (
+        <div className="grid gap-1">
+          <Label className="text-[10px]">Fuzzy distance</Label>
+          <Input
+            type="number"
+            min={0}
+            max={2}
+            step={1}
+            value={matcher.fuzzyDistance}
+            onChange={(e) =>
+              onChange({
+                ...matcher,
+                fuzzyDistance: Math.max(
+                  0,
+                  Math.min(2, Number(e.target.value) || 0)
+                ),
+              })
+            }
+            className="h-7 w-14 font-mono text-[11px]"
+          />
+        </div>
+      )}
+      {!edismaxMode && (
+        <div className="flex items-center gap-2 pb-0.5">
+          <label className="inline-flex items-center gap-1 text-[10px]">
+            <input
+              type="checkbox"
+              checked={matcher.required}
+              onChange={(e) =>
+                onChange({
+                  ...matcher,
+                  required: e.target.checked,
+                  prohibited: e.target.checked ? false : matcher.prohibited,
+                })
+              }
+              className="size-3 rounded border-border"
+            />
+            Required (+)
+          </label>
+          <label className="inline-flex items-center gap-1 text-[10px]">
+            <input
+              type="checkbox"
+              checked={matcher.prohibited}
+              onChange={(e) =>
+                onChange({
+                  ...matcher,
+                  prohibited: e.target.checked,
+                  required: e.target.checked ? false : matcher.required,
+                })
+              }
+              className="size-3 rounded border-border"
+            />
+            Prohibited (−)
+          </label>
+        </div>
+      )}
+      {canRemove && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="ml-auto size-6 text-muted-foreground hover:text-destructive"
+          aria-label="Remove matcher"
+          onClick={onRemove}
+        >
+          <Trash2 className="size-3" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function FieldMatchersCard({
+  field,
+  searchText,
+  edismaxMode,
+  onChange,
+  onRemoveField,
+}: {
+  field: BuilderFieldConfig;
+  searchText: string;
+  edismaxMode: boolean;
+  onChange: (next: BuilderFieldConfig) => void;
+  onRemoveField: () => void;
+}) {
+  const updateMatcher = (id: string, next: FieldMatcher) => {
+    onChange({
+      ...field,
+      matchers: field.matchers.map((m) => (m.id === id ? next : m)),
+    });
+  };
+
+  const removeMatcher = (id: string) => {
+    if (field.matchers.length <= 1) return;
+    onChange({
+      ...field,
+      matchers: field.matchers.filter((m) => m.id !== id),
+    });
+  };
+
+  const addMatcher = () => {
+    onChange({
+      ...field,
+      matchers: [...field.matchers, createMatcher()],
+    });
+  };
+
+  return (
+    <li className="space-y-2 rounded-lg border border-border/80 bg-muted/10 p-2.5">
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 flex-1 truncate font-mono text-xs font-medium">
+          {field.field}
         </span>
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
           className="size-7 text-muted-foreground hover:text-destructive"
-          aria-label={`Remove ${clause.field}`}
-          onClick={onRemove}
+          aria-label={`Remove ${field.field}`}
+          onClick={onRemoveField}
         >
           <Trash2 className="size-3.5" />
         </Button>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="grid gap-1 sm:col-span-2">
-          <Label className="text-[10px]">Value</Label>
-          <Input
-            value={clause.value}
-            onChange={(e) => onChange({ ...clause, value: e.target.value })}
-            placeholder="search text…"
-            className="h-8 font-mono text-xs"
+      <div className="space-y-1.5">
+        {field.matchers.map((m) => (
+          <MatcherRow
+            key={m.id}
+            matcher={m}
+            field={field}
+            searchText={searchText}
+            edismaxMode={edismaxMode}
+            canRemove={field.matchers.length > 1}
+            onChange={(next) => updateMatcher(m.id, next)}
+            onRemove={() => removeMatcher(m.id)}
           />
-        </div>
-        <div className="grid gap-1">
-          <Label className="text-[10px]">Match</Label>
-          <Select
-            value={clause.mode}
-            onValueChange={(v) =>
-              onChange({ ...clause, mode: v as MatchMode })
-            }
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {MATCH_MODES.map((m) => (
-                <SelectItem key={m} value={m}>
-                  {matchModeLabel(m)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-1">
-          <Label className="text-[10px]">Boost ^</Label>
-          <Input
-            type="number"
-            min={0}
-            step={0.1}
-            value={clause.boost}
-            onChange={(e) =>
-              onChange({
-                ...clause,
-                boost: Math.max(0, Number(e.target.value) || 0),
-              })
-            }
-            className="h-8 font-mono text-xs"
-          />
-        </div>
-        {clause.mode === "fuzzy" && (
-          <div className="grid gap-1">
-            <Label className="text-[10px]">Fuzzy ~</Label>
-            <Input
-              type="number"
-              min={0}
-              max={2}
-              step={1}
-              value={clause.fuzzyDistance}
-              onChange={(e) =>
-                onChange({
-                  ...clause,
-                  fuzzyDistance: Math.max(
-                    0,
-                    Math.min(2, Number(e.target.value) || 0)
-                  ),
-                })
-              }
-              className="h-8 font-mono text-xs"
-            />
-          </div>
-        )}
+        ))}
       </div>
-      <div className="mt-2 flex flex-wrap gap-2">
-        <label className="inline-flex items-center gap-1.5 text-[11px]">
-          <input
-            type="checkbox"
-            checked={clause.required}
-            onChange={(e) =>
-              onChange({
-                ...clause,
-                required: e.target.checked,
-                prohibited: e.target.checked ? false : clause.prohibited,
-              })
-            }
-            className="size-3.5 rounded border-border"
-          />
-          Required (+)
-        </label>
-        <label className="inline-flex items-center gap-1.5 text-[11px]">
-          <input
-            type="checkbox"
-            checked={clause.prohibited}
-            onChange={(e) =>
-              onChange({
-                ...clause,
-                prohibited: e.target.checked,
-                required: e.target.checked ? false : clause.required,
-              })
-            }
-            className="size-3.5 rounded border-border"
-          />
-          Prohibited (−)
-        </label>
-      </div>
-      <p className="mt-2 text-[10px] text-muted-foreground">
-        {describeClause(clause)}
-      </p>
-    </div>
-  );
-}
-
-function AddFieldPopover({
-  field,
-  onAdd,
-}: {
-  field: string;
-  onAdd: (clause: BuilderClause) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(() => createClause(field));
-
-  const reset = () => setDraft(createClause(field));
-
-  const handleOpen = (next: boolean) => {
-    setOpen(next);
-    if (next) reset();
-  };
-
-  const handleAdd = () => {
-    onAdd({ ...draft, field });
-    setOpen(false);
-    reset();
-  };
-
-  return (
-    <Popover open={open} onOpenChange={handleOpen}>
-      <PopoverTrigger
+      <Button
         type="button"
-        className={cn(
-          "rounded-md border border-border bg-muted/30 px-2 py-1 font-mono text-[11px]",
-          "transition-colors hover:border-[var(--solr-accent)]/50 hover:bg-[var(--solr-accent)]/10"
-        )}
+        variant="ghost"
+        size="sm"
+        className="h-7 text-[11px] text-muted-foreground"
+        onClick={addMatcher}
       >
-        {field}
-      </PopoverTrigger>
-      <PopoverContent className="w-80" align="start">
-        <PopoverHeader>
-          <PopoverTitle className="font-mono text-sm">{field}</PopoverTitle>
-        </PopoverHeader>
-        <div className="grid gap-2 pt-1">
-          <ClauseEditor
-            clause={draft}
-            onChange={setDraft}
-            onRemove={() => setOpen(false)}
-          />
-          <Button type="button" size="sm" className={accentButtonClass} onClick={handleAdd}>
-            <Plus className="size-3.5" />
-            Add to query
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+        <Plus className="size-3" />
+        Add matcher
+      </Button>
+      {field.matchers.length > 1 && (
+        <p className="text-[10px] text-muted-foreground">
+          Matchers on this field are combined with OR.
+        </p>
+      )}
+    </li>
   );
 }
 
@@ -269,51 +321,163 @@ export function QueryBuilderPanel({
     [schema.schema]
   );
 
+  const selectedNames = useMemo(
+    () => new Set(state.fields.map((f) => f.field)),
+    [state.fields]
+  );
+
   const plan = compileBuilderSearch(state, parser);
-  const compiledQ = compileClausesToQ(state.clauses, state.combineWith);
   const showEdismax = parser === "edismax" || parser === "dismax";
 
-  const updateClause = (id: string, next: BuilderClause) => {
+  const [importUrl, setImportUrl] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
+
+  const handleImport = () => {
+    setImportError(null);
+    setImportWarnings([]);
+    try {
+      const result = importBuilderFromSolrUrl(importUrl);
+      onChange(result.state);
+      onParserChange(result.parser);
+      setImportWarnings(result.warnings);
+      setImportUrl("");
+    } catch (err) {
+      setImportError(
+        err instanceof ImportBuilderError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Import failed."
+      );
+    }
+  };
+
+  const toggleField = (name: string) => {
+    if (selectedNames.has(name)) {
+      onChange({
+        ...state,
+        fields: state.fields.filter((f) => f.field !== name),
+      });
+    } else {
+      onChange({
+        ...state,
+        fields: [...state.fields, createFieldConfig(name)],
+      });
+    }
+  };
+
+  const updateField = (id: string, next: BuilderFieldConfig) => {
     onChange({
       ...state,
-      clauses: state.clauses.map((c) => (c.id === id ? next : c)),
+      fields: state.fields.map((f) => (f.id === id ? next : f)),
     });
   };
 
-  const removeClause = (id: string) => {
-    onChange({
-      ...state,
-      clauses: state.clauses.filter((c) => c.id !== id),
-    });
-  };
-
-  const addClause = (clause: BuilderClause) => {
-    onChange({ ...state, clauses: [...state.clauses, clause] });
+  const selectAllFields = () => {
+    const existing = new Set(state.fields.map((f) => f.field));
+    const added = fields
+      .filter((f) => !existing.has(f.name))
+      .map((f) => createFieldConfig(f.name));
+    onChange({ ...state, fields: [...state.fields, ...added] });
   };
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,220px)_minmax(0,160px)_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,220px)_1fr]">
         <ParserModeSelect value={parser} onChange={onParserChange} />
         <div className="grid gap-1.5">
-          <Label className="text-xs">Combine clauses</Label>
-          <Select
-            value={state.combineWith}
-            onValueChange={(v) =>
-              onChange({
-                ...state,
-                combineWith: v as BuilderState["combineWith"],
-              })
+          <Label htmlFor="builder-search" className="text-xs">
+            Search
+          </Label>
+          <Input
+            id="builder-search"
+            value={state.searchText}
+            onChange={(e) =>
+              onChange({ ...state, searchText: e.target.value })
             }
+            placeholder="What are you looking for?"
+            spellCheck={false}
+            className="text-sm focus-visible:border-[var(--solr-accent)] focus-visible:ring-[var(--solr-accent)]/25"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            One prompt applied to every selected field — like a search box on a
+            web shop.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-dashed border-border/80 bg-muted/10 p-3">
+        <Label htmlFor="builder-import-url" className="text-xs">
+          Import from Solr URL
+        </Label>
+        <p className="text-[11px] text-muted-foreground">
+          Paste a Solr select URL (or query string) to reverse-engineer field
+          matchers, search text, parser, and edismax settings.
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            id="builder-import-url"
+            value={importUrl}
+            onChange={(e) => {
+              setImportUrl(e.target.value);
+              if (importError) setImportError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleImport();
+              }
+            }}
+            placeholder="http://localhost:8983/solr/core/select?q=..."
+            spellCheck={false}
+            className="font-mono text-xs"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            disabled={!importUrl.trim()}
+            onClick={handleImport}
           >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="AND">AND (all must match)</SelectItem>
-              <SelectItem value="OR">OR (any may match)</SelectItem>
-            </SelectContent>
-          </Select>
+            <Download className="size-3.5" />
+            Import
+          </Button>
+        </div>
+        {importError && (
+          <p className="text-[11px] text-destructive">{importError}</p>
+        )}
+        {importWarnings.map((w) => (
+          <p key={w} className="text-[11px] text-amber-700 dark:text-amber-400">
+            {w}
+          </p>
+        ))}
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-border/80 bg-muted/15 p-3">
+        <Label className="text-xs">Query options</Label>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-1">
+            <Label className="text-[10px]">Combine fields</Label>
+            <Select
+              value={state.combineWith}
+              onValueChange={(v) =>
+                onChange({
+                  ...state,
+                  combineWith: v as BuilderState["combineWith"],
+                })
+              }
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="OR">OR (match any field)</SelectItem>
+                <SelectItem value="AND">AND (match all fields)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -329,52 +493,90 @@ export function QueryBuilderPanel({
               edismax: { ...state.edismax, qfOverride },
             })
           }
-          qfPlaceholder="Auto from fields with boost, or override e.g. title^2 body"
+          qfPlaceholder={
+            state.fields.length > 0
+              ? "Auto from selected fields — or override"
+              : "Select fields below, or set qf manually"
+          }
         />
       )}
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <Label className="text-xs">Fields — click to add</Label>
-          {schema.loading && (
-            <span className="text-[10px] text-muted-foreground">loading schema…</span>
-          )}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Label className="text-xs">Search in fields</Label>
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={fields.length === 0}
+              onClick={selectAllFields}
+            >
+              Select all
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={state.fields.length === 0}
+              onClick={() => onChange({ ...state, fields: [] })}
+            >
+              Clear fields
+            </Button>
+          </div>
         </div>
+        {schema.loading && (
+          <p className="text-[10px] text-muted-foreground">loading schema…</p>
+        )}
         {fields.length === 0 ? (
           <p className="text-xs text-muted-foreground">
             No indexed fields loaded for this core.
           </p>
         ) : (
-          <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto rounded-lg border border-dashed border-border p-2">
-            {fields.map((f) => (
-              <AddFieldPopover
-                key={f.name}
-                field={f.name}
-                onAdd={addClause}
-              />
-            ))}
+          <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto rounded-lg border border-dashed border-border p-2">
+            {fields.map((f) => {
+              const selected = selectedNames.has(f.name);
+              return (
+                <button
+                  key={f.name}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => toggleField(f.name)}
+                  className={cn(
+                    "rounded-md border px-2 py-1 font-mono text-[11px] transition-colors",
+                    selected
+                      ? "border-[var(--solr-accent)] bg-[var(--solr-accent)]/15 text-[var(--solr-accent-muted)]"
+                      : "border-border bg-muted/30 hover:border-[var(--solr-accent)]/40 hover:bg-muted/50"
+                  )}
+                >
+                  {f.name}
+                </button>
+              );
+            })}
           </div>
         )}
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-xs">Builder query</Label>
-        {state.clauses.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
-            Click a field above to add a clause, or run{" "}
-            <code className="font-mono">*:*</code> with no clauses.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {state.clauses.map((c) => (
-              <ClauseEditor
-                key={c.id}
-                clause={c}
-                onChange={(next) => updateClause(c.id, next)}
-                onRemove={() => removeClause(c.id)}
+        {state.fields.length > 0 && (
+          <ul className="space-y-2">
+            {state.fields.map((f) => (
+              <FieldMatchersCard
+                key={f.id}
+                field={f}
+                searchText={state.searchText}
+                edismaxMode={showEdismax}
+                onChange={(next) => updateField(f.id, next)}
+                onRemoveField={() => toggleField(f.field)}
               />
             ))}
-          </div>
+          </ul>
+        )}
+        {state.fields.length > 0 && showEdismax && (
+          <p className="text-[11px] text-muted-foreground">
+            Edismax compiles matchers into{" "}
+            <code className="font-mono">q</code> and uses selected fields in{" "}
+            <code className="font-mono">qf</code> (max boost per field).
+          </p>
         )}
       </div>
 
@@ -384,7 +586,7 @@ export function QueryBuilderPanel({
             Raw syntax (compiled q)
           </p>
           <pre className="max-h-24 overflow-x-auto whitespace-pre-wrap break-all font-mono text-[11px] text-foreground">
-            {compiledQ}
+            {plan.q}
           </pre>
         </div>
         <div className="rounded-lg border border-[var(--solr-accent)]/25 bg-[var(--solr-accent)]/5 p-3">
@@ -392,19 +594,35 @@ export function QueryBuilderPanel({
             Builder summary
           </p>
           <ul className="max-h-24 space-y-1 overflow-y-auto text-[11px] text-foreground">
-            {state.clauses.length === 0 ? (
-              <li className="text-muted-foreground">No clauses yet</li>
-            ) : (
-              state.clauses.map((c) => (
-                <li key={c.id} className="flex gap-1.5">
-                  <span className="shrink-0 text-muted-foreground">•</span>
-                  <span>{describeClause(c)}</span>
+            <li>
+              <span className="text-muted-foreground">Search: </span>
+              {state.searchText.trim() ? (
+                <span>“{state.searchText.trim()}”</span>
+              ) : (
+                <span className="text-muted-foreground">(empty → *:*)</span>
+              )}
+            </li>
+            {state.fields.length > 0 && (
+              <>
+                <li>
+                  <span className="text-muted-foreground">Fields: </span>
+                  {state.fields.map((f) => f.field).join(", ")}
                 </li>
-              ))
+                <li className="text-muted-foreground">
+                  Combined with {state.combineWith}
+                </li>
+                {state.fields.map((f) => (
+                  <li key={f.id} className="flex gap-1.5 pl-2">
+                    <span className="shrink-0 text-muted-foreground">•</span>
+                    <span>{describeFieldConfig(f, state.searchText)}</span>
+                  </li>
+                ))}
+              </>
             )}
-            {state.clauses.length > 1 && (
-              <li className="pt-1 text-muted-foreground">
-                Combined with {state.combineWith}
+            {state.fields.length === 0 && (
+              <li>
+                <span className="text-muted-foreground">Fields: </span>
+                <span className="text-muted-foreground">none selected</span>
               </li>
             )}
           </ul>
@@ -419,18 +637,22 @@ export function QueryBuilderPanel({
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {state.clauses.length > 0 && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground"
-            onClick={() => onChange({ ...state, clauses: [] })}
-          >
-            <X className="size-3.5" />
-            Clear builder
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+          onClick={() =>
+            onChange({
+              ...state,
+              searchText: "",
+              fields: [],
+            })
+          }
+        >
+          <X className="size-3.5" />
+          Clear all
+        </Button>
         <Button
           type="button"
           disabled={loading}

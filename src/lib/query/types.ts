@@ -12,16 +12,29 @@ export type MatchMode =
 
 export type ClauseOperator = "AND" | "OR";
 
-/** Selected field with optional per-field overrides (shared search text). */
+export const DEFAULT_MIN_QUERY_LENGTH = 3;
+export const DEFAULT_MATCHER_BOOST = 1;
+export const DEFAULT_FUZZY_DISTANCE = 2;
+
+/** One match strategy for a field (a field may have several). */
+export interface FieldMatcher {
+  id: string;
+  mode: MatchMode;
+  /** Default 1 when unset or zero. */
+  boost: number;
+  fuzzyDistance: number;
+  /** Override min search length; falls back to field then global default. */
+  minLength?: number;
+  required: boolean;
+  prohibited: boolean;
+}
+
 export interface BuilderFieldConfig {
   id: string;
   field: string;
-  /** When set, overrides global match mode for this field only. */
-  mode?: MatchMode;
-  boost: number;
-  fuzzyDistance: number;
-  required: boolean;
-  prohibited: boolean;
+  matchers: FieldMatcher[];
+  /** Optional min length for all matchers on this field unless overridden per matcher. */
+  minLength?: number;
 }
 
 export interface EdismaxSettings {
@@ -32,10 +45,7 @@ export interface EdismaxSettings {
 }
 
 export interface BuilderState {
-  /** User search prompt — applied to every selected field. */
   searchText: string;
-  globalMode: MatchMode;
-  globalFuzzyDistance: number;
   fields: BuilderFieldConfig[];
   combineWith: ClauseOperator;
   edismax: EdismaxSettings;
@@ -62,29 +72,41 @@ export const DEFAULT_EDISMAX: EdismaxSettings = {
 
 export const DEFAULT_BUILDER_STATE: BuilderState = {
   searchText: "",
-  globalMode: "term",
-  globalFuzzyDistance: 1,
   fields: [],
   combineWith: "OR",
   edismax: { ...DEFAULT_EDISMAX },
 };
 
-export function createFieldConfig(field: string): BuilderFieldConfig {
+function newId(prefix: string): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createMatcher(
+  mode: MatchMode = "term",
+  overrides?: Partial<Omit<FieldMatcher, "id" | "mode">>
+): FieldMatcher {
   return {
-    id:
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `f-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    field,
-    boost: 1,
-    fuzzyDistance: 1,
+    id: newId("m"),
+    mode,
+    boost: DEFAULT_MATCHER_BOOST,
+    fuzzyDistance: DEFAULT_FUZZY_DISTANCE,
     required: false,
     prohibited: false,
+    ...overrides,
   };
 }
 
-/** @deprecated use BuilderFieldConfig */
-export type BuilderClause = BuilderFieldConfig;
+export function createFieldConfig(field: string): BuilderFieldConfig {
+  return {
+    id: newId("f"),
+    field,
+    matchers: [createMatcher("term")],
+  };
+}
 
-/** @deprecated use createFieldConfig */
+/** @deprecated */
+export type BuilderClause = BuilderFieldConfig;
+/** @deprecated */
 export const createClause = createFieldConfig;

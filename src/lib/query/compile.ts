@@ -3,9 +3,14 @@ import type {
   BuilderState,
   ClassicQueryState,
   EdismaxSettings,
+  FieldMatcher,
   MatchMode,
   QueryParserMode,
   SearchPlan,
+} from "@/lib/query/types";
+import {
+  DEFAULT_FUZZY_DISTANCE,
+  DEFAULT_MIN_QUERY_LENGTH,
 } from "@/lib/query/types";
 
 const LUCENE_SPECIAL = /[+\-&|!(){}\[\]^"~*?:\\/]/g;
@@ -18,90 +23,108 @@ export function escapeQuoted(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-function effectiveMode(
-  field: BuilderFieldConfig,
-  globalMode: MatchMode
-): MatchMode {
-  return field.mode ?? globalMode;
-}
-
-function effectiveFuzzy(
-  field: BuilderFieldConfig,
-  globalFuzzy: number,
-  mode: MatchMode
+export function resolveMinLength(
+  matcher: FieldMatcher,
+  field: BuilderFieldConfig
 ): number {
-  if (mode === "fuzzy") {
-    return Math.max(0, Math.min(2, field.fuzzyDistance ?? globalFuzzy));
-  }
-  return globalFuzzy;
+  return (
+    matcher.minLength ?? field.minLength ?? DEFAULT_MIN_QUERY_LENGTH
+  );
 }
 
-function compileFieldClause(
-  field: BuilderFieldConfig,
-  searchText: string,
-  globalMode: MatchMode,
-  globalFuzzy: number
+export function effectiveBoost(boost: number | undefined): number {
+  if (boost === undefined || boost <= 0) return 1;
+  return boost;
+}
+
+function compileMatcherExpr(
+  fieldName: string,
+  matcher: FieldMatcher,
+  searchText: string
 ): string {
   const raw = searchText.trim();
-  if (!raw) return "";
-
-  const fieldName = escapeLuceneTerm(field.field);
-  const mode = effectiveMode(field, globalMode);
-  const fuzzy = effectiveFuzzy(field, globalFuzzy, mode);
+  const field = escapeLuceneTerm(fieldName);
+  const mode = matcher.mode;
+  const fuzzy = Math.max(
+    0,
+    Math.min(2, matcher.fuzzyDistance ?? DEFAULT_FUZZY_DISTANCE)
+  );
 
   let expr: string;
   switch (mode) {
     case "phrase":
-      expr = `${fieldName}:"${escapeQuoted(raw)}"`;
+      expr = `${field}:"${escapeQuoted(raw)}"`;
       break;
     case "exact":
-      expr = `${fieldName}:"${escapeQuoted(raw)}"`;
+      expr = `${field}:"${escapeQuoted(raw)}"`;
       break;
     case "wildcard": {
       const v = raw.endsWith("*") ? raw.slice(0, -1) : raw;
-      expr = `${fieldName}:${escapeLuceneTerm(v)}*`;
+      expr = `${field}:${escapeLuceneTerm(v)}*`;
       break;
     }
     case "prefix":
-      expr = `${fieldName}:${escapeLuceneTerm(raw)}*`;
+      expr = `${field}:${escapeLuceneTerm(raw)}*`;
       break;
     case "fuzzy":
-      expr = `${fieldName}:${escapeLuceneTerm(raw)}~${fuzzy}`;
+      expr = `${field}:${escapeLuceneTerm(raw)}~${fuzzy}`;
       break;
     case "term":
     default:
       if (/\s/.test(raw)) {
-        expr = `${fieldName}:"${escapeQuoted(raw)}"`;
+        expr = `${field}:"${escapeQuoted(raw)}"`;
       } else {
-        expr = `${fieldName}:${escapeLuceneTerm(raw)}`;
+        expr = `${field}:${escapeLuceneTerm(raw)}`;
       }
   }
 
-  if (field.boost > 0 && field.boost !== 1) {
-    expr += `^${field.boost}`;
-  }
-  if (field.prohibited) return `-${expr}`;
-  if (field.required) return `+${expr}`;
+  const boost = effectiveBoost(matcher.boost);
+  if (boost !== 1) expr += `^${boost}`;
+  if (matcher.prohibited) return `-${expr}`;
+  if (matcher.required) return `+${expr}`;
   return expr;
+}
+
+function compileMatcherClause(
+  field: BuilderFieldConfig,
+  matcher: FieldMatcher,
+  searchText: string
+): string | null {
+  const raw = searchText.trim();
+  if (!raw) return null;
+  const minLen = resolveMinLength(matcher, field);
+  if (raw.length < minLen) return null;
+  return compileMatcherExpr(field.field, matcher, raw);
+}
+
+function compileFieldGroup(
+  field: BuilderFieldConfig,
+  searchText: string
+): string {
+  const parts = field.matchers
+    .map((m) => compileMatcherClause(field, m, searchText))
+    .filter((p): p is string => p !== null);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0]!;
+  return `(${parts.join(" OR ")})`;
 }
 
 export function compileFieldsToQ(
   fields: BuilderFieldConfig[],
   searchText: string,
-  globalMode: MatchMode,
-  globalFuzzy: number,
-  combineWith: "AND" | "OR"
+  options: { combineWith: "AND" | "OR" }
 ): string {
   const text = searchText.trim();
   if (!text) return "*:*";
   if (fields.length === 0) return text;
 
   const parts = fields
-    .map((f) => compileFieldClause(f, text, globalMode, globalFuzzy))
+    .map((f) => compileFieldGroup(f, text))
     .filter((p) => p.length > 0);
+
   if (parts.length === 0) return "*:*";
   if (parts.length === 1) return parts[0]!;
-  const join = ` ${combineWith} `;
+  const join = ` ${options.combineWith} `;
   return parts.map((p) => (p.includes(" ") ? `(${p})` : p)).join(join);
 }
 
@@ -117,7 +140,11 @@ function buildEdismaxExtra(
     extra.qf = qf;
   }
   if (edismax.mm.trim()) extra.mm = edismax.mm.trim();
-  if (edismax.min.trim()) extra.min = edismax.min.trim();
+  if (edismax.min.trim()) {
+    extra.min = edismax.min.trim();
+  } else if (DEFAULT_MIN_QUERY_LENGTH > 0) {
+    extra.min = String(DEFAULT_MIN_QUERY_LENGTH);
+  }
   if (edismax.tie.trim()) extra.tie = edismax.tie.trim();
   return extra;
 }
@@ -126,8 +153,12 @@ function qfFromFields(fields: BuilderFieldConfig[]): string {
   const seen = new Map<string, number>();
   for (const f of fields) {
     if (!f.field.trim()) continue;
+    let maxBoost = 1;
+    for (const m of f.matchers) {
+      maxBoost = Math.max(maxBoost, effectiveBoost(m.boost));
+    }
     const prev = seen.get(f.field) ?? 0;
-    seen.set(f.field, Math.max(prev, f.boost > 0 ? f.boost : 1));
+    seen.set(f.field, Math.max(prev, maxBoost));
   }
   return [...seen.entries()]
     .map(([field, boost]) => (boost !== 1 ? `${field}^${boost}` : field))
@@ -138,10 +169,14 @@ export function compileBuilderSearch(
   state: BuilderState,
   parser: QueryParserMode
 ): SearchPlan {
-  const text = state.searchText.trim();
+  const qFromFields = compileFieldsToQ(state.fields, state.searchText, {
+    combineWith: state.combineWith,
+  });
 
   if (parser === "edismax" || parser === "dismax") {
-    const q = text || "*:*";
+    const text = state.searchText.trim();
+    const q =
+      state.fields.length > 0 && text ? qFromFields : text || "*:*";
     const extra = buildEdismaxExtra(
       parser,
       state.edismax,
@@ -150,26 +185,16 @@ export function compileBuilderSearch(
     const summary =
       text && state.fields.length > 0
         ? `"${text}" → ${state.fields.map((f) => f.field).join(", ")}`
-        : text || "*:*";
+        : q;
     return { q, extra, summary };
   }
 
-  const q = compileFieldsToQ(
-    state.fields,
-    state.searchText,
-    state.globalMode,
-    state.globalFuzzyDistance,
-    state.combineWith
-  );
-  return { q, extra: { defType: "lucene" }, summary: q };
+  return {
+    q: qFromFields,
+    extra: { defType: "lucene" },
+    summary: qFromFields,
+  };
 }
-
-/** @deprecated use compileFieldsToQ */
-export const compileClausesToQ = (
-  fields: BuilderFieldConfig[],
-  combineWith: "AND" | "OR"
-) =>
-  compileFieldsToQ(fields, "", "term", 1, combineWith);
 
 export function compileClassicSearch(
   state: ClassicQueryState,
@@ -224,26 +249,54 @@ export function matchModeLabel(mode: MatchMode): string {
   }
 }
 
-export function describeFieldConfig(
+export function describeMatcher(
+  matcher: FieldMatcher,
   field: BuilderFieldConfig,
-  searchText: string,
-  globalMode: MatchMode,
-  globalFuzzy: number
+  searchText: string
 ): string {
-  const mode = effectiveMode(field, globalMode);
-  const parts: string[] = [matchModeLabel(mode)];
-  if (mode === "fuzzy") {
-    parts.push(`~${effectiveFuzzy(field, globalFuzzy, mode)}`);
+  const parts: string[] = [matchModeLabel(matcher.mode)];
+  if (matcher.mode === "fuzzy") {
+    parts.push(
+      `~${Math.max(0, Math.min(2, matcher.fuzzyDistance ?? DEFAULT_FUZZY_DISTANCE))}`
+    );
   }
-  if (field.mode) parts.push("(field override)");
-  if (field.boost !== 1) parts.push(`boost ^${field.boost}`);
-  if (field.required) parts.push("required");
-  if (field.prohibited) parts.push("prohibited");
-  const val = searchText.trim();
-  return val
-    ? `${field.field} · “${val.length > 32 ? `${val.slice(0, 29)}…` : val}” · ${parts.join(" · ")}`
-    : `${field.field} · ${parts.join(" · ")}`;
+  const boost = effectiveBoost(matcher.boost);
+  if (boost !== 1) parts.push(`^${boost}`);
+  const minLen = resolveMinLength(matcher, field);
+  parts.push(`min ${minLen} chars`);
+  if (matcher.required) parts.push("required");
+  if (matcher.prohibited) parts.push("prohibited");
+  const raw = searchText.trim();
+  const active = raw.length >= minLen;
+  if (!active && raw.length > 0) parts.push("(skipped — query too short)");
+  return parts.join(" · ");
 }
 
-/** @deprecated use describeFieldConfig */
+export function describeFieldConfig(
+  field: BuilderFieldConfig,
+  searchText: string
+): string {
+  const matcherDesc = field.matchers
+    .map((m) => describeMatcher(m, field, searchText))
+    .join("; ");
+  return `${field.field}: ${matcherDesc}`;
+}
+
+/** @deprecated */
 export const describeClause = describeFieldConfig;
+
+/** @deprecated */
+export const compileClausesToQ = (
+  fields: BuilderFieldConfig[],
+  combineWith: "AND" | "OR"
+) => compileFieldsToQ(fields, "", { combineWith });
+
+export function isMatcherActive(
+  matcher: FieldMatcher,
+  field: BuilderFieldConfig,
+  searchText: string
+): boolean {
+  const raw = searchText.trim();
+  if (!raw) return false;
+  return raw.length >= resolveMinLength(matcher, field);
+}
