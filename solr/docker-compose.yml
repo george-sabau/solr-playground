@@ -1,0 +1,18 @@
+services:
+  solr:
+    image: solr:9
+    container_name: solr-playground
+    ports:
+      - "8983:8983"
+    volumes:
+      - ./var:/var/solr
+      - ./configsets:/opt/solr/server/solr/configsets/playground:ro
+      - ./data:/seed-data:ro
+      - ./init/bootstrap.sh:/bootstrap/bootstrap.sh:ro
+      - ./init/01-create-cores.sh:/bootstrap/01-create-cores.sh:ro
+      - ./init/02-seed-data.sh:/bootstrap/02-seed-data.sh:ro
+    environment:
+      SOLR_HEAP: 512m
+    # Bootstrap recreates /var/solr/data on an empty bind mount; must run as root first.
+    user: "0:0"
+    entrypoint: ["/bin/bash", "/bootstrap/bootstrap.sh"]

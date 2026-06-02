@@ -1,0 +1,62 @@
+/**
+ * Starts Solr (Docker Compose) then Next.js dev server.
+ * Resolves `docker` when missing from PATH (see scripts/lib/find-docker.mjs).
+ */
+import { spawnSync } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { findDockerExe } from "./lib/find-docker.mjs";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(__dirname, "..");
+
+function tryDocker(args, dockerExe) {
+  return spawnSync(dockerExe, args, {
+    stdio: "inherit",
+    cwd: repoRoot,
+    shell: false,
+  });
+}
+
+const dockerExe = findDockerExe(repoRoot);
+if (!dockerExe) {
+  console.error(`
+[dev:stack] Docker CLI not found (or docker.exe does not run).
+
+Fix:
+  • Install Docker Desktop for Windows, start it, and wait until it says "Engine running".
+  • Restart Cursor so PATH includes Docker, or set DOCKER_EXE to the full path of docker.exe:
+
+      $env:DOCKER_EXE = "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe"
+      npm run dev:stack
+
+  • If Docker is only inside WSL, run this project from WSL or add Docker to Windows PATH.
+
+Then run: npm run dev:stack
+`);
+  process.exit(1);
+}
+
+const composeArgs = [
+  "compose",
+  "-f",
+  "solr/docker-compose.yml",
+  "--project-directory",
+  "solr",
+  "up",
+  "-d",
+];
+
+const up = tryDocker(composeArgs, dockerExe);
+if (up.error || up.status !== 0) {
+  process.exit(up.status ?? 1);
+}
+
+const nextBin = join(repoRoot, "node_modules", "next", "dist", "bin", "next");
+const next = spawnSync(process.execPath, [nextBin, "dev"], {
+  stdio: "inherit",
+  cwd: repoRoot,
+  env: process.env,
+});
+
+process.exit(next.status ?? 0);

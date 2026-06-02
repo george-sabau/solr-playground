@@ -1,0 +1,2 @@
+# Solr bootstrap scripts must use LF inside Linux containers
+solr/init/*.sh text eol=lf

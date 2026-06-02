@@ -1,0 +1,10 @@
+---
+description: How to run Solr (Docker) + Next.js together for local testing
+alwaysApply: true
+---
+
+# Local full stack
+
+- **`npm run dev:stack`** (repository root): runs `scripts/dev-stack.mjs` — resolves `docker` via `scripts/lib/find-docker.mjs` (`docker --version`, `where.exe docker`, common paths, **`DOCKER_EXE`**), then `docker compose -f solr/docker-compose.yml --project-directory solr up -d`, then `next dev`.
+- **`npm run stop:stack`**: runs `scripts/stop-stack.mjs` — compose down + **`kill-port` on 3000** (avoid if another critical service uses 3000).
+- Solr-only details: [`solr/README.md`](solr/README.md). Broader agent notes: [`AGENTS.md`](AGENTS.md).

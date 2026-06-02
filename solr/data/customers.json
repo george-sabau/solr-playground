@@ -1,0 +1,762 @@
+[
+  {
+    "id": "c-001",
+    "first_name": "John",
+    "last_name": "Smith",
+    "full_name": "John Smith",
+    "email": "john.smith+1@example.test",
+    "city": "Paris",
+    "state": "CA",
+    "country": "FR",
+    "segment": "regular",
+    "interests": [
+      "music",
+      "travel"
+    ],
+    "signup_date": "2019-02-02T08:00:00Z",
+    "lifetime_value": 362.49,
+    "loyalty_score": 2.9,
+    "is_active": true
+  },
+  {
+    "id": "c-002",
+    "first_name": "Alex",
+    "last_name": "Nguyen",
+    "full_name": "Alex Nguyen",
+    "email": "alex.nguyen+2@example.test",
+    "city": "Austin",
+    "state": "NY",
+    "country": "US",
+    "segment": "churned",
+    "interests": [
+      "sports",
+      "gadgets"
+    ],
+    "signup_date": "2020-03-03T08:00:00Z",
+    "lifetime_value": 604.98,
+    "loyalty_score": 3.3,
+    "is_active": true
+  },
+  {
+    "id": "c-003",
+    "first_name": "Sam",
+    "last_name": "Garcia",
+    "full_name": "Sam Garcia",
+    "email": "sam.garcia+3@example.test",
+    "city": "Toronto",
+    "state": "ON",
+    "country": "CA",
+    "segment": "VIP",
+    "interests": [
+      "books",
+      "coffee"
+    ],
+    "signup_date": "2021-04-04T08:00:00Z",
+    "lifetime_value": 847.47,
+    "loyalty_score": 3.7,
+    "is_active": true
+  },
+  {
+    "id": "c-004",
+    "first_name": "Riley",
+    "last_name": "Müller",
+    "full_name": "Riley Müller",
+    "email": "riley.müller+4@example.test",
+    "city": "Sydney",
+    "state": "NSW",
+    "country": "AU",
+    "segment": "regular",
+    "interests": [
+      "garden",
+      "diy"
+    ],
+    "signup_date": "2022-05-05T08:00:00Z",
+    "lifetime_value": 1089.96,
+    "loyalty_score": 4.1,
+    "is_active": true
+  },
+  {
+    "id": "c-005",
+    "first_name": "Morgan",
+    "last_name": "Tanaka",
+    "full_name": "Morgan Tanaka",
+    "email": "morgan.tanaka+5@example.test",
+    "city": "Lagos",
+    "state": "BE",
+    "country": "NG",
+    "segment": "churned",
+    "interests": [
+      "photography",
+      "design"
+    ],
+    "signup_date": "2023-06-06T08:00:00Z",
+    "lifetime_value": 1332.45,
+    "loyalty_score": 4.5,
+    "is_active": true
+  },
+  {
+    "id": "c-006",
+    "first_name": "Taylor",
+    "last_name": "Silva",
+    "full_name": "Taylor Silva",
+    "email": "taylor.silva+6@example.test",
+    "city": "Mumbai",
+    "state": "BY",
+    "country": "IN",
+    "segment": "VIP",
+    "interests": [
+      "search",
+      "analytics"
+    ],
+    "signup_date": "2024-07-07T08:00:00Z",
+    "lifetime_value": 1574.94,
+    "loyalty_score": 2.5,
+    "is_active": true
+  },
+  {
+    "id": "c-007",
+    "first_name": "Jordan",
+    "last_name": "Kowalski",
+    "full_name": "Jordan Kowalski",
+    "email": "jordan.kowalski+7@example.test",
+    "city": "Seattle",
+    "state": "WA",
+    "country": "US",
+    "segment": "regular",
+    "interests": [
+      "music",
+      "travel"
+    ],
+    "signup_date": "2018-08-08T08:00:00Z",
+    "lifetime_value": 1817.43,
+    "loyalty_score": 2.9,
+    "is_active": true
+  },
+  {
+    "id": "c-008",
+    "first_name": "Casey",
+    "last_name": "Okafor",
+    "full_name": "Casey Okafor",
+    "email": "casey.okafor+8@example.test",
+    "city": "Lisbon",
+    "state": "OR",
+    "country": "PT",
+    "segment": "churned",
+    "interests": [
+      "sports",
+      "gadgets"
+    ],
+    "signup_date": "2019-09-09T08:00:00Z",
+    "lifetime_value": 2059.92,
+    "loyalty_score": 3.3,
+    "is_active": false
+  },
+  {
+    "id": "c-009",
+    "first_name": "Quinn",
+    "last_name": "Chen",
+    "full_name": "Quinn Chen",
+    "email": "quinn.chen+9@example.test",
+    "city": "Oslo",
+    "state": "LN",
+    "country": "NO",
+    "segment": "VIP",
+    "interests": [
+      "books",
+      "coffee"
+    ],
+    "signup_date": "2020-10-10T08:00:00Z",
+    "lifetime_value": 502.5,
+    "loyalty_score": 3.7,
+    "is_active": true
+  },
+  {
+    "id": "c-010",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "full_name": "Jane Doe",
+    "email": "jane.doe+10@example.test",
+    "city": "Berlin",
+    "state": "TX",
+    "country": "DE",
+    "segment": "regular",
+    "interests": [
+      "garden",
+      "diy"
+    ],
+    "signup_date": "2021-11-11T08:00:00Z",
+    "lifetime_value": 744.99,
+    "loyalty_score": 4.1,
+    "is_active": true
+  },
+  {
+    "id": "c-011",
+    "first_name": "John",
+    "last_name": "Smith",
+    "full_name": "John Smith",
+    "email": "john.smith+11@example.test",
+    "city": "Paris",
+    "state": "CA",
+    "country": "FR",
+    "segment": "churned",
+    "interests": [
+      "photography",
+      "design"
+    ],
+    "signup_date": "2022-12-12T08:00:00Z",
+    "lifetime_value": 987.48,
+    "loyalty_score": 4.5,
+    "is_active": true
+  },
+  {
+    "id": "c-012",
+    "first_name": "Alex",
+    "last_name": "Nguyen",
+    "full_name": "Alex Nguyen",
+    "email": "alex.nguyen+12@example.test",
+    "city": "Austin",
+    "state": "NY",
+    "country": "US",
+    "segment": "VIP",
+    "interests": [
+      "search",
+      "analytics"
+    ],
+    "signup_date": "2023-01-13T08:00:00Z",
+    "lifetime_value": 1229.97,
+    "loyalty_score": 2.5,
+    "is_active": true
+  },
+  {
+    "id": "c-013",
+    "first_name": "Sam",
+    "last_name": "Garcia",
+    "full_name": "Sam Garcia",
+    "email": "sam.garcia+13@example.test",
+    "city": "Toronto",
+    "state": "ON",
+    "country": "CA",
+    "segment": "regular",
+    "interests": [
+      "music",
+      "travel"
+    ],
+    "signup_date": "2024-02-14T08:00:00Z",
+    "lifetime_value": 1472.46,
+    "loyalty_score": 2.9,
+    "is_active": true
+  },
+  {
+    "id": "c-014",
+    "first_name": "Riley",
+    "last_name": "Müller",
+    "full_name": "Riley Müller",
+    "email": "riley.müller+14@example.test",
+    "city": "Sydney",
+    "state": "NSW",
+    "country": "AU",
+    "segment": "churned",
+    "interests": [
+      "sports",
+      "gadgets"
+    ],
+    "signup_date": "2018-03-15T08:00:00Z",
+    "lifetime_value": 1714.95,
+    "loyalty_score": 3.3,
+    "is_active": true
+  },
+  {
+    "id": "c-015",
+    "first_name": "Morgan",
+    "last_name": "Tanaka",
+    "full_name": "Morgan Tanaka",
+    "email": "morgan.tanaka+15@example.test",
+    "city": "Lagos",
+    "state": "BE",
+    "country": "NG",
+    "segment": "VIP",
+    "interests": [
+      "books",
+      "coffee"
+    ],
+    "signup_date": "2019-04-16T08:00:00Z",
+    "lifetime_value": 1957.44,
+    "loyalty_score": 3.7,
+    "is_active": true
+  },
+  {
+    "id": "c-016",
+    "first_name": "Taylor",
+    "last_name": "Silva",
+    "full_name": "Taylor Silva",
+    "email": "taylor.silva+16@example.test",
+    "city": "Mumbai",
+    "state": "BY",
+    "country": "IN",
+    "segment": "regular",
+    "interests": [
+      "garden",
+      "diy"
+    ],
+    "signup_date": "2020-05-17T08:00:00Z",
+    "lifetime_value": 2199.93,
+    "loyalty_score": 4.1,
+    "is_active": false
+  },
+  {
+    "id": "c-017",
+    "first_name": "Jordan",
+    "last_name": "Kowalski",
+    "full_name": "Jordan Kowalski",
+    "email": "jordan.kowalski+17@example.test",
+    "city": "Seattle",
+    "state": "WA",
+    "country": "US",
+    "segment": "churned",
+    "interests": [
+      "photography",
+      "design"
+    ],
+    "signup_date": "2021-06-18T08:00:00Z",
+    "lifetime_value": 2442.42,
+    "loyalty_score": 4.5,
+    "is_active": true
+  },
+  {
+    "id": "c-018",
+    "first_name": "Casey",
+    "last_name": "Okafor",
+    "full_name": "Casey Okafor",
+    "email": "casey.okafor+18@example.test",
+    "city": "Lisbon",
+    "state": "OR",
+    "country": "PT",
+    "segment": "VIP",
+    "interests": [
+      "search",
+      "analytics"
+    ],
+    "signup_date": "2022-07-19T08:00:00Z",
+    "lifetime_value": 885,
+    "loyalty_score": 2.5,
+    "is_active": true
+  },
+  {
+    "id": "c-019",
+    "first_name": "Quinn",
+    "last_name": "Chen",
+    "full_name": "Quinn Chen",
+    "email": "quinn.chen+19@example.test",
+    "city": "Oslo",
+    "state": "LN",
+    "country": "NO",
+    "segment": "regular",
+    "interests": [
+      "music",
+      "travel"
+    ],
+    "signup_date": "2023-08-20T08:00:00Z",
+    "lifetime_value": 1127.49,
+    "loyalty_score": 2.9,
+    "is_active": true
+  },
+  {
+    "id": "c-020",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "full_name": "Jane Doe",
+    "email": "jane.doe+20@example.test",
+    "city": "Berlin",
+    "state": "TX",
+    "country": "DE",
+    "segment": "churned",
+    "interests": [
+      "sports",
+      "gadgets"
+    ],
+    "signup_date": "2024-09-21T08:00:00Z",
+    "lifetime_value": 1369.98,
+    "loyalty_score": 3.3,
+    "is_active": true
+  },
+  {
+    "id": "c-021",
+    "first_name": "John",
+    "last_name": "Smith",
+    "full_name": "John Smith",
+    "email": "john.smith+21@example.test",
+    "city": "Paris",
+    "state": "CA",
+    "country": "FR",
+    "segment": "VIP",
+    "interests": [
+      "books",
+      "coffee"
+    ],
+    "signup_date": "2018-10-22T08:00:00Z",
+    "lifetime_value": 1612.47,
+    "loyalty_score": 3.7,
+    "is_active": true
+  },
+  {
+    "id": "c-022",
+    "first_name": "Alex",
+    "last_name": "Nguyen",
+    "full_name": "Alex Nguyen",
+    "email": "alex.nguyen+22@example.test",
+    "city": "Austin",
+    "state": "NY",
+    "country": "US",
+    "segment": "regular",
+    "interests": [
+      "garden",
+      "diy"
+    ],
+    "signup_date": "2019-11-23T08:00:00Z",
+    "lifetime_value": 1854.96,
+    "loyalty_score": 4.1,
+    "is_active": true
+  },
+  {
+    "id": "c-023",
+    "first_name": "Sam",
+    "last_name": "Garcia",
+    "full_name": "Sam Garcia",
+    "email": "sam.garcia+23@example.test",
+    "city": "Toronto",
+    "state": "ON",
+    "country": "CA",
+    "segment": "churned",
+    "interests": [
+      "photography",
+      "design"
+    ],
+    "signup_date": "2020-12-24T08:00:00Z",
+    "lifetime_value": 2097.45,
+    "loyalty_score": 4.5,
+    "is_active": true
+  },
+  {
+    "id": "c-024",
+    "first_name": "Riley",
+    "last_name": "Müller",
+    "full_name": "Riley Müller",
+    "email": "riley.müller+24@example.test",
+    "city": "Sydney",
+    "state": "NSW",
+    "country": "AU",
+    "segment": "VIP",
+    "interests": [
+      "search",
+      "analytics"
+    ],
+    "signup_date": "2021-01-25T08:00:00Z",
+    "lifetime_value": 2339.94,
+    "loyalty_score": 2.5,
+    "is_active": false
+  },
+  {
+    "id": "c-025",
+    "first_name": "Morgan",
+    "last_name": "Tanaka",
+    "full_name": "Morgan Tanaka",
+    "email": "morgan.tanaka+25@example.test",
+    "city": "Lagos",
+    "state": "BE",
+    "country": "NG",
+    "segment": "regular",
+    "interests": [
+      "music",
+      "travel"
+    ],
+    "signup_date": "2022-02-01T08:00:00Z",
+    "lifetime_value": 2582.43,
+    "loyalty_score": 2.9,
+    "is_active": true
+  },
+  {
+    "id": "c-026",
+    "first_name": "Taylor",
+    "last_name": "Silva",
+    "full_name": "Taylor Silva",
+    "email": "taylor.silva+26@example.test",
+    "city": "Mumbai",
+    "state": "BY",
+    "country": "IN",
+    "segment": "churned",
+    "interests": [
+      "sports",
+      "gadgets"
+    ],
+    "signup_date": "2023-03-02T08:00:00Z",
+    "lifetime_value": 2824.92,
+    "loyalty_score": 3.3,
+    "is_active": true
+  },
+  {
+    "id": "c-027",
+    "first_name": "Jordan",
+    "last_name": "Kowalski",
+    "full_name": "Jordan Kowalski",
+    "email": "jordan.kowalski+27@example.test",
+    "city": "Seattle",
+    "state": "WA",
+    "country": "US",
+    "segment": "VIP",
+    "interests": [
+      "books",
+      "coffee"
+    ],
+    "signup_date": "2024-04-03T08:00:00Z",
+    "lifetime_value": 1267.5,
+    "loyalty_score": 3.7,
+    "is_active": true
+  },
+  {
+    "id": "c-028",
+    "first_name": "Casey",
+    "last_name": "Okafor",
+    "full_name": "Casey Okafor",
+    "email": "casey.okafor+28@example.test",
+    "city": "Lisbon",
+    "state": "OR",
+    "country": "PT",
+    "segment": "regular",
+    "interests": [
+      "garden",
+      "diy"
+    ],
+    "signup_date": "2018-05-04T08:00:00Z",
+    "lifetime_value": 1509.99,
+    "loyalty_score": 4.1,
+    "is_active": true
+  },
+  {
+    "id": "c-029",
+    "first_name": "Quinn",
+    "last_name": "Chen",
+    "full_name": "Quinn Chen",
+    "email": "quinn.chen+29@example.test",
+    "city": "Oslo",
+    "state": "LN",
+    "country": "NO",
+    "segment": "churned",
+    "interests": [
+      "photography",
+      "design"
+    ],
+    "signup_date": "2019-06-05T08:00:00Z",
+    "lifetime_value": 1752.48,
+    "loyalty_score": 4.5,
+    "is_active": true
+  },
+  {
+    "id": "c-030",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "full_name": "Jane Doe",
+    "email": "jane.doe+30@example.test",
+    "city": "Berlin",
+    "state": "TX",
+    "country": "DE",
+    "segment": "VIP",
+    "interests": [
+      "search",
+      "analytics"
+    ],
+    "signup_date": "2020-07-06T08:00:00Z",
+    "lifetime_value": 1994.97,
+    "loyalty_score": 2.5,
+    "is_active": true
+  },
+  {
+    "id": "c-031",
+    "first_name": "John",
+    "last_name": "Smith",
+    "full_name": "John Smith",
+    "email": "john.smith+31@example.test",
+    "city": "Paris",
+    "state": "CA",
+    "country": "FR",
+    "segment": "regular",
+    "interests": [
+      "music",
+      "travel"
+    ],
+    "signup_date": "2021-08-07T08:00:00Z",
+    "lifetime_value": 2237.46,
+    "loyalty_score": 2.9,
+    "is_active": true
+  },
+  {
+    "id": "c-032",
+    "first_name": "Alex",
+    "last_name": "Nguyen",
+    "full_name": "Alex Nguyen",
+    "email": "alex.nguyen+32@example.test",
+    "city": "Austin",
+    "state": "NY",
+    "country": "US",
+    "segment": "churned",
+    "interests": [
+      "sports",
+      "gadgets"
+    ],
+    "signup_date": "2022-09-08T08:00:00Z",
+    "lifetime_value": 2479.95,
+    "loyalty_score": 3.3,
+    "is_active": false
+  },
+  {
+    "id": "c-033",
+    "first_name": "Sam",
+    "last_name": "Garcia",
+    "full_name": "Sam Garcia",
+    "email": "sam.garcia+33@example.test",
+    "city": "Toronto",
+    "state": "ON",
+    "country": "CA",
+    "segment": "VIP",
+    "interests": [
+      "books",
+      "coffee"
+    ],
+    "signup_date": "2023-10-09T08:00:00Z",
+    "lifetime_value": 2722.44,
+    "loyalty_score": 3.7,
+    "is_active": true
+  },
+  {
+    "id": "c-034",
+    "first_name": "Riley",
+    "last_name": "Müller",
+    "full_name": "Riley Müller",
+    "email": "riley.müller+34@example.test",
+    "city": "Sydney",
+    "state": "NSW",
+    "country": "AU",
+    "segment": "regular",
+    "interests": [
+      "garden",
+      "diy"
+    ],
+    "signup_date": "2024-11-10T08:00:00Z",
+    "lifetime_value": 2964.93,
+    "loyalty_score": 4.1,
+    "is_active": true
+  },
+  {
+    "id": "c-035",
+    "first_name": "Morgan",
+    "last_name": "Tanaka",
+    "full_name": "Morgan Tanaka",
+    "email": "morgan.tanaka+35@example.test",
+    "city": "Lagos",
+    "state": "BE",
+    "country": "NG",
+    "segment": "churned",
+    "interests": [
+      "photography",
+      "design"
+    ],
+    "signup_date": "2018-12-11T08:00:00Z",
+    "lifetime_value": 3207.42,
+    "loyalty_score": 4.5,
+    "is_active": true
+  },
+  {
+    "id": "c-036",
+    "first_name": "Taylor",
+    "last_name": "Silva",
+    "full_name": "Taylor Silva",
+    "email": "taylor.silva+36@example.test",
+    "city": "Mumbai",
+    "state": "BY",
+    "country": "IN",
+    "segment": "VIP",
+    "interests": [
+      "search",
+      "analytics"
+    ],
+    "signup_date": "2019-01-12T08:00:00Z",
+    "lifetime_value": 1650,
+    "loyalty_score": 2.5,
+    "is_active": true
+  },
+  {
+    "id": "c-037",
+    "first_name": "Jordan",
+    "last_name": "Kowalski",
+    "full_name": "Jordan Kowalski",
+    "email": "jordan.kowalski+37@example.test",
+    "city": "Seattle",
+    "state": "WA",
+    "country": "US",
+    "segment": "regular",
+    "interests": [
+      "music",
+      "travel"
+    ],
+    "signup_date": "2020-02-13T08:00:00Z",
+    "lifetime_value": 1892.49,
+    "loyalty_score": 2.9,
+    "is_active": true
+  },
+  {
+    "id": "c-038",
+    "first_name": "Casey",
+    "last_name": "Okafor",
+    "full_name": "Casey Okafor",
+    "email": "casey.okafor+38@example.test",
+    "city": "Lisbon",
+    "state": "OR",
+    "country": "PT",
+    "segment": "churned",
+    "interests": [
+      "sports",
+      "gadgets"
+    ],
+    "signup_date": "2021-03-14T08:00:00Z",
+    "lifetime_value": 2134.98,
+    "loyalty_score": 3.3,
+    "is_active": true
+  },
+  {
+    "id": "c-039",
+    "first_name": "Quinn",
+    "last_name": "Chen",
+    "full_name": "Quinn Chen",
+    "email": "quinn.chen+39@example.test",
+    "city": "Oslo",
+    "state": "LN",
+    "country": "NO",
+    "segment": "VIP",
+    "interests": [
+      "books",
+      "coffee"
+    ],
+    "signup_date": "2022-04-15T08:00:00Z",
+    "lifetime_value": 2377.47,
+    "loyalty_score": 3.7,
+    "is_active": true
+  },
+  {
+    "id": "c-040",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "full_name": "Jane Doe",
+    "email": "jane.doe+40@example.test",
+    "city": "Berlin",
+    "state": "TX",
+    "country": "DE",
+    "segment": "regular",
+    "interests": [
+      "garden",
+      "diy"
+    ],
+    "signup_date": "2023-05-16T08:00:00Z",
+    "lifetime_value": 2619.96,
+    "loyalty_score": 4.1,
+    "is_active": false
+  }
+]

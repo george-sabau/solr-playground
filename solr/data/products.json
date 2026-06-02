@@ -1,0 +1,762 @@
+[
+  {
+    "id": "p-001",
+    "name": "Acmé Widget 1 — Pro",
+    "description": "Showcase product 1. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Acmé\". ",
+    "brand": "Acmé",
+    "categories": [
+      "home",
+      "kitchen"
+    ],
+    "tags": [
+      "clearance",
+      "limited"
+    ],
+    "price": 68.36,
+    "rating": 3.6,
+    "stock": 7,
+    "in_stock": true,
+    "created_at": "2020-02-02T10:30:00Z"
+  },
+  {
+    "id": "p-002",
+    "name": "Northwind Widget 2 — Lite",
+    "description": "Showcase product 2. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Northwind\". ",
+    "brand": "Northwind",
+    "categories": [
+      "outdoor",
+      "sports"
+    ],
+    "tags": [
+      "new",
+      "featured"
+    ],
+    "price": 131.72,
+    "rating": 4.1,
+    "stock": 14,
+    "in_stock": true,
+    "created_at": "2021-03-03T10:30:00Z"
+  },
+  {
+    "id": "p-003",
+    "name": "Contoso Widget 3 — Pro",
+    "description": "Showcase product 3. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Contoso\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Contoso",
+    "categories": [
+      "office",
+      "supplies"
+    ],
+    "tags": [
+      "eco",
+      "organic"
+    ],
+    "price": 195.08,
+    "rating": 4.1,
+    "stock": 21,
+    "in_stock": true,
+    "created_at": "2022-04-04T10:30:00Z"
+  },
+  {
+    "id": "p-004",
+    "name": "Fabrikam Widget 4 — Lite",
+    "description": "Showcase product 4. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Fabrikam\". ",
+    "brand": "Fabrikam",
+    "categories": [
+      "books",
+      "media"
+    ],
+    "tags": [
+      "premium",
+      "warranty"
+    ],
+    "price": 258.44,
+    "rating": 4.6,
+    "stock": 28,
+    "in_stock": true,
+    "created_at": "2023-05-05T10:30:00Z"
+  },
+  {
+    "id": "p-005",
+    "name": "Initech Widget 5 — Pro",
+    "description": "Showcase product 5. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Initech\". ",
+    "brand": "Initech",
+    "categories": [
+      "toys",
+      "kids"
+    ],
+    "tags": [
+      "starter",
+      "budget"
+    ],
+    "price": 321.8,
+    "rating": 3.4,
+    "stock": 35,
+    "in_stock": true,
+    "created_at": "2024-06-06T10:30:00Z"
+  },
+  {
+    "id": "p-006",
+    "name": "Umbrella Corp Widget 6 — Lite",
+    "description": "Showcase product 6. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Umbrella Corp\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Umbrella Corp",
+    "categories": [
+      "music",
+      "instruments"
+    ],
+    "tags": [
+      "pro",
+      "studio"
+    ],
+    "price": 385.16,
+    "rating": 3.4,
+    "stock": 42,
+    "in_stock": true,
+    "created_at": "2019-07-07T10:30:00Z"
+  },
+  {
+    "id": "p-007",
+    "name": "Tyrell Widget 7 — Pro",
+    "description": "Showcase product 7. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Tyrell\". ",
+    "brand": "Tyrell",
+    "categories": [
+      "garden",
+      "tools"
+    ],
+    "tags": [
+      "portable",
+      "travel"
+    ],
+    "price": 98.59,
+    "rating": 3.9,
+    "stock": 49,
+    "in_stock": true,
+    "created_at": "2020-08-08T10:30:00Z"
+  },
+  {
+    "id": "p-008",
+    "name": "Cyberdyne Widget 8 — Lite",
+    "description": "Showcase product 8. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Cyberdyne\". ",
+    "brand": "Cyberdyne",
+    "categories": [
+      "electronics",
+      "gadgets"
+    ],
+    "tags": [
+      "bestseller",
+      "gift"
+    ],
+    "price": 161.95,
+    "rating": 4.5,
+    "stock": 56,
+    "in_stock": true,
+    "created_at": "2021-09-09T10:30:00Z"
+  },
+  {
+    "id": "p-009",
+    "name": "Wonka Widget 9 — Pro",
+    "description": "Showcase product 9. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Wonka\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Wonka",
+    "categories": [
+      "home",
+      "kitchen"
+    ],
+    "tags": [
+      "clearance",
+      "limited"
+    ],
+    "price": 225.31,
+    "rating": 4.4,
+    "stock": 63,
+    "in_stock": true,
+    "created_at": "2022-10-10T10:30:00Z"
+  },
+  {
+    "id": "p-010",
+    "name": "Acme Widget 10 — Lite",
+    "description": "Showcase product 10. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Acme\". ",
+    "brand": "Acme",
+    "categories": [
+      "outdoor",
+      "sports"
+    ],
+    "tags": [
+      "new",
+      "featured"
+    ],
+    "price": 288.67,
+    "rating": 3.2,
+    "stock": 70,
+    "in_stock": true,
+    "created_at": "2023-11-11T10:30:00Z"
+  },
+  {
+    "id": "p-011",
+    "name": "Acmé Widget 11 — Pro",
+    "description": "Showcase product 11. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Acmé\". ",
+    "brand": "Acmé",
+    "categories": [
+      "office",
+      "supplies"
+    ],
+    "tags": [
+      "eco",
+      "organic"
+    ],
+    "price": 352.03,
+    "rating": 3.8,
+    "stock": 77,
+    "in_stock": false,
+    "created_at": "2024-12-12T10:30:00Z"
+  },
+  {
+    "id": "p-012",
+    "name": "Northwind Widget 12 — Lite",
+    "description": "Showcase product 12. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Northwind\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Northwind",
+    "categories": [
+      "books",
+      "media"
+    ],
+    "tags": [
+      "premium",
+      "warranty"
+    ],
+    "price": 415.39,
+    "rating": 3.7,
+    "stock": 84,
+    "in_stock": true,
+    "created_at": "2019-01-13T10:30:00Z"
+  },
+  {
+    "id": "p-013",
+    "name": "Contoso Widget 13 — Pro",
+    "description": "Showcase product 13. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Contoso\". ",
+    "brand": "Contoso",
+    "categories": [
+      "toys",
+      "kids"
+    ],
+    "tags": [
+      "starter",
+      "budget"
+    ],
+    "price": 478.75,
+    "rating": 4.3,
+    "stock": 91,
+    "in_stock": true,
+    "created_at": "2020-02-14T10:30:00Z"
+  },
+  {
+    "id": "p-014",
+    "name": "Fabrikam Widget 14 — Lite",
+    "description": "Showcase product 14. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Fabrikam\". ",
+    "brand": "Fabrikam",
+    "categories": [
+      "music",
+      "instruments"
+    ],
+    "tags": [
+      "pro",
+      "studio"
+    ],
+    "price": 192.18,
+    "rating": 4.8,
+    "stock": 98,
+    "in_stock": true,
+    "created_at": "2021-03-15T10:30:00Z"
+  },
+  {
+    "id": "p-015",
+    "name": "Initech Widget 15 — Pro",
+    "description": "Showcase product 15. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Initech\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Initech",
+    "categories": [
+      "garden",
+      "tools"
+    ],
+    "tags": [
+      "portable",
+      "travel"
+    ],
+    "price": 255.54,
+    "rating": 3,
+    "stock": 105,
+    "in_stock": true,
+    "created_at": "2022-04-16T10:30:00Z"
+  },
+  {
+    "id": "p-016",
+    "name": "Umbrella Corp Widget 16 — Lite",
+    "description": "Showcase product 16. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Umbrella Corp\". ",
+    "brand": "Umbrella Corp",
+    "categories": [
+      "electronics",
+      "gadgets"
+    ],
+    "tags": [
+      "bestseller",
+      "gift"
+    ],
+    "price": 318.9,
+    "rating": 3.6,
+    "stock": 112,
+    "in_stock": true,
+    "created_at": "2023-05-17T10:30:00Z"
+  },
+  {
+    "id": "p-017",
+    "name": "Tyrell Widget 17 — Pro",
+    "description": "Showcase product 17. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Tyrell\". ",
+    "brand": "Tyrell",
+    "categories": [
+      "home",
+      "kitchen"
+    ],
+    "tags": [
+      "clearance",
+      "limited"
+    ],
+    "price": 154.97,
+    "rating": 4.1,
+    "stock": 119,
+    "in_stock": true,
+    "created_at": "2024-06-18T10:30:00Z"
+  },
+  {
+    "id": "p-018",
+    "name": "Cyberdyne Widget 18 — Lite",
+    "description": "Showcase product 18. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Cyberdyne\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Cyberdyne",
+    "categories": [
+      "outdoor",
+      "sports"
+    ],
+    "tags": [
+      "new",
+      "featured"
+    ],
+    "price": 218.33,
+    "rating": 4.1,
+    "stock": 126,
+    "in_stock": true,
+    "created_at": "2019-07-19T10:30:00Z"
+  },
+  {
+    "id": "p-019",
+    "name": "Wonka Widget 19 — Pro",
+    "description": "Showcase product 19. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Wonka\". ",
+    "brand": "Wonka",
+    "categories": [
+      "office",
+      "supplies"
+    ],
+    "tags": [
+      "eco",
+      "organic"
+    ],
+    "price": 281.69,
+    "rating": 4.6,
+    "stock": 133,
+    "in_stock": true,
+    "created_at": "2020-08-20T10:30:00Z"
+  },
+  {
+    "id": "p-020",
+    "name": "Acme Widget 20 — Lite",
+    "description": "Showcase product 20. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Acme\". ",
+    "brand": "Acme",
+    "categories": [
+      "books",
+      "media"
+    ],
+    "tags": [
+      "premium",
+      "warranty"
+    ],
+    "price": 345.05,
+    "rating": 3.4,
+    "stock": 140,
+    "in_stock": true,
+    "created_at": "2021-09-21T10:30:00Z"
+  },
+  {
+    "id": "p-021",
+    "name": "Acmé Widget 21 — Pro",
+    "description": "Showcase product 21. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Acmé\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Acmé",
+    "categories": [
+      "toys",
+      "kids"
+    ],
+    "tags": [
+      "starter",
+      "budget"
+    ],
+    "price": 58.48,
+    "rating": 3.4,
+    "stock": 147,
+    "in_stock": true,
+    "created_at": "2022-10-22T10:30:00Z"
+  },
+  {
+    "id": "p-022",
+    "name": "Northwind Widget 22 — Lite",
+    "description": "Showcase product 22. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Northwind\". ",
+    "brand": "Northwind",
+    "categories": [
+      "music",
+      "instruments"
+    ],
+    "tags": [
+      "pro",
+      "studio"
+    ],
+    "price": 121.84,
+    "rating": 3.9,
+    "stock": 154,
+    "in_stock": false,
+    "created_at": "2023-11-23T10:30:00Z"
+  },
+  {
+    "id": "p-023",
+    "name": "Contoso Widget 23 — Pro",
+    "description": "Showcase product 23. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Contoso\". ",
+    "brand": "Contoso",
+    "categories": [
+      "garden",
+      "tools"
+    ],
+    "tags": [
+      "portable",
+      "travel"
+    ],
+    "price": 185.2,
+    "rating": 4.5,
+    "stock": 161,
+    "in_stock": true,
+    "created_at": "2024-12-24T10:30:00Z"
+  },
+  {
+    "id": "p-024",
+    "name": "Fabrikam Widget 24 — Lite",
+    "description": "Showcase product 24. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Fabrikam\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Fabrikam",
+    "categories": [
+      "electronics",
+      "gadgets"
+    ],
+    "tags": [
+      "bestseller",
+      "gift"
+    ],
+    "price": 248.56,
+    "rating": 4.4,
+    "stock": 168,
+    "in_stock": true,
+    "created_at": "2019-01-25T10:30:00Z"
+  },
+  {
+    "id": "p-025",
+    "name": "Initech Widget 25 — Pro",
+    "description": "Showcase product 25. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Initech\". ",
+    "brand": "Initech",
+    "categories": [
+      "home",
+      "kitchen"
+    ],
+    "tags": [
+      "clearance",
+      "limited"
+    ],
+    "price": 311.92,
+    "rating": 3.2,
+    "stock": 175,
+    "in_stock": true,
+    "created_at": "2020-02-26T10:30:00Z"
+  },
+  {
+    "id": "p-026",
+    "name": "Umbrella Corp Widget 26 — Lite",
+    "description": "Showcase product 26. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Umbrella Corp\". ",
+    "brand": "Umbrella Corp",
+    "categories": [
+      "outdoor",
+      "sports"
+    ],
+    "tags": [
+      "new",
+      "featured"
+    ],
+    "price": 375.28,
+    "rating": 3.8,
+    "stock": 182,
+    "in_stock": true,
+    "created_at": "2021-03-27T10:30:00Z"
+  },
+  {
+    "id": "p-027",
+    "name": "Tyrell Widget 27 — Pro",
+    "description": "Showcase product 27. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Tyrell\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Tyrell",
+    "categories": [
+      "office",
+      "supplies"
+    ],
+    "tags": [
+      "eco",
+      "organic"
+    ],
+    "price": 438.64,
+    "rating": 3.7,
+    "stock": 189,
+    "in_stock": true,
+    "created_at": "2022-04-01T10:30:00Z"
+  },
+  {
+    "id": "p-028",
+    "name": "Cyberdyne Widget 28 — Lite",
+    "description": "Showcase product 28. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Cyberdyne\". ",
+    "brand": "Cyberdyne",
+    "categories": [
+      "books",
+      "media"
+    ],
+    "tags": [
+      "premium",
+      "warranty"
+    ],
+    "price": 152.07,
+    "rating": 4.3,
+    "stock": 196,
+    "in_stock": true,
+    "created_at": "2023-05-02T10:30:00Z"
+  },
+  {
+    "id": "p-029",
+    "name": "Wonka Widget 29 — Pro",
+    "description": "Showcase product 29. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Wonka\". ",
+    "brand": "Wonka",
+    "categories": [
+      "toys",
+      "kids"
+    ],
+    "tags": [
+      "starter",
+      "budget"
+    ],
+    "price": 215.43,
+    "rating": 4.8,
+    "stock": 3,
+    "in_stock": true,
+    "created_at": "2024-06-03T10:30:00Z"
+  },
+  {
+    "id": "p-030",
+    "name": "Acme Widget 30 — Lite",
+    "description": "Showcase product 30. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Acme\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Acme",
+    "categories": [
+      "music",
+      "instruments"
+    ],
+    "tags": [
+      "pro",
+      "studio"
+    ],
+    "price": 278.79,
+    "rating": 3,
+    "stock": 10,
+    "in_stock": true,
+    "created_at": "2019-07-04T10:30:00Z"
+  },
+  {
+    "id": "p-031",
+    "name": "Acmé Widget 31 — Pro",
+    "description": "Showcase product 31. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Acmé\". ",
+    "brand": "Acmé",
+    "categories": [
+      "garden",
+      "tools"
+    ],
+    "tags": [
+      "portable",
+      "travel"
+    ],
+    "price": 342.15,
+    "rating": 3.6,
+    "stock": 17,
+    "in_stock": true,
+    "created_at": "2020-08-05T10:30:00Z"
+  },
+  {
+    "id": "p-032",
+    "name": "Northwind Widget 32 — Lite",
+    "description": "Showcase product 32. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Northwind\". ",
+    "brand": "Northwind",
+    "categories": [
+      "electronics",
+      "gadgets"
+    ],
+    "tags": [
+      "bestseller",
+      "gift"
+    ],
+    "price": 405.51,
+    "rating": 4.1,
+    "stock": 24,
+    "in_stock": true,
+    "created_at": "2021-09-06T10:30:00Z"
+  },
+  {
+    "id": "p-033",
+    "name": "Contoso Widget 33 — Pro",
+    "description": "Showcase product 33. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Contoso\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Contoso",
+    "categories": [
+      "home",
+      "kitchen"
+    ],
+    "tags": [
+      "clearance",
+      "limited"
+    ],
+    "price": 468.87,
+    "rating": 4.1,
+    "stock": 31,
+    "in_stock": false,
+    "created_at": "2022-10-07T10:30:00Z"
+  },
+  {
+    "id": "p-034",
+    "name": "Fabrikam Widget 34 — Lite",
+    "description": "Showcase product 34. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Fabrikam\". ",
+    "brand": "Fabrikam",
+    "categories": [
+      "outdoor",
+      "sports"
+    ],
+    "tags": [
+      "new",
+      "featured"
+    ],
+    "price": 304.94,
+    "rating": 4.6,
+    "stock": 38,
+    "in_stock": true,
+    "created_at": "2023-11-08T10:30:00Z"
+  },
+  {
+    "id": "p-035",
+    "name": "Initech Widget 35 — Pro",
+    "description": "Showcase product 35. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Initech\". ",
+    "brand": "Initech",
+    "categories": [
+      "office",
+      "supplies"
+    ],
+    "tags": [
+      "eco",
+      "organic"
+    ],
+    "price": 18.37,
+    "rating": 3.4,
+    "stock": 45,
+    "in_stock": true,
+    "created_at": "2024-12-09T10:30:00Z"
+  },
+  {
+    "id": "p-036",
+    "name": "Umbrella Corp Widget 36 — Lite",
+    "description": "Showcase product 36. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Umbrella Corp\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Umbrella Corp",
+    "categories": [
+      "books",
+      "media"
+    ],
+    "tags": [
+      "premium",
+      "warranty"
+    ],
+    "price": 81.73,
+    "rating": 3.4,
+    "stock": 52,
+    "in_stock": true,
+    "created_at": "2019-01-10T10:30:00Z"
+  },
+  {
+    "id": "p-037",
+    "name": "Tyrell Widget 37 — Pro",
+    "description": "Showcase product 37. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Tyrell\". ",
+    "brand": "Tyrell",
+    "categories": [
+      "toys",
+      "kids"
+    ],
+    "tags": [
+      "starter",
+      "budget"
+    ],
+    "price": 145.09,
+    "rating": 3.9,
+    "stock": 59,
+    "in_stock": true,
+    "created_at": "2020-02-11T10:30:00Z"
+  },
+  {
+    "id": "p-038",
+    "name": "Cyberdyne Widget 38 — Lite",
+    "description": "Showcase product 38. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Cyberdyne\". ",
+    "brand": "Cyberdyne",
+    "categories": [
+      "music",
+      "instruments"
+    ],
+    "tags": [
+      "pro",
+      "studio"
+    ],
+    "price": 208.45,
+    "rating": 4.5,
+    "stock": 66,
+    "in_stock": true,
+    "created_at": "2021-03-12T10:30:00Z"
+  },
+  {
+    "id": "p-039",
+    "name": "Wonka Widget 39 — Pro",
+    "description": "Showcase product 39. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Wonka\". Includes proximity-friendly phrases like solr playground near me.",
+    "brand": "Wonka",
+    "categories": [
+      "garden",
+      "tools"
+    ],
+    "tags": [
+      "portable",
+      "travel"
+    ],
+    "price": 271.81,
+    "rating": 4.4,
+    "stock": 73,
+    "in_stock": true,
+    "created_at": "2022-04-13T10:30:00Z"
+  },
+  {
+    "id": "p-040",
+    "name": "Acme Widget 40 — Lite",
+    "description": "Showcase product 40. Great for wildcard *widget*, fuzzy brand search, and phrase queries on \"Acme\". ",
+    "brand": "Acme",
+    "categories": [
+      "electronics",
+      "gadgets"
+    ],
+    "tags": [
+      "bestseller",
+      "gift"
+    ],
+    "price": 335.17,
+    "rating": 3.2,
+    "stock": 80,
+    "in_stock": true,
+    "created_at": "2023-05-14T10:30:00Z"
+  }
+]
