@@ -1,3 +1,5 @@
+import { getActiveEndpoint } from "@/lib/solr/endpoints";
+import type { SolrAuth } from "@/lib/solr/endpoints";
 import { useSolrStore } from "@/lib/stores/solr-store";
 import type {
   AnalysisResponse,
@@ -20,14 +22,24 @@ function authHeaderValue(user: string, pass: string): string {
   return Buffer.from(pair, "utf8").toString("base64");
 }
 
-function buildSolrHeaders(): Headers {
-  const { baseUrl, auth } = useSolrStore.getState();
+export function buildSolrHeadersFrom(
+  baseUrl: string,
+  auth: SolrAuth | null
+): Headers {
   const headers = new Headers();
   headers.set(HEADER_BASE, baseUrl.trim().replace(/\/+$/, ""));
   if (auth?.user) {
     headers.set(HEADER_AUTH, authHeaderValue(auth.user, auth.pass ?? ""));
   }
   return headers;
+}
+
+function buildSolrHeaders(): Headers {
+  const active = getActiveEndpoint(useSolrStore.getState());
+  if (!active) {
+    throw new Error("No active Solr endpoint configured");
+  }
+  return buildSolrHeadersFrom(active.baseUrl, active.auth);
 }
 
 export async function solrFetch(
@@ -48,6 +60,24 @@ export async function solrFetch(
   });
 }
 
+async function solrJsonWithHeaders<T>(
+  path: string,
+  searchParams: Record<string, string> | undefined,
+  headers: Headers
+): Promise<T> {
+  const trimmed = path.replace(/^\/+/, "");
+  const qs = new URLSearchParams(searchParams ?? {});
+  const q = qs.toString();
+  const url = `/api/solr/${trimmed}${q ? `?${q}` : ""}`;
+  headers.set("Accept", "application/json");
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export async function solrJson<T>(
   path: string,
   searchParams?: Record<string, string>
@@ -64,12 +94,29 @@ export async function solrJson<T>(
 }
 
 export async function fetchCoresStatus(): Promise<string[]> {
-  const data = await solrJson<CoresStatusResponse>("admin/cores", {
-    action: "STATUS",
-    wt: "json",
-  });
+  const active = getActiveEndpoint(useSolrStore.getState());
+  if (!active) return [];
+  return fetchCoresStatusForEndpoint(active);
+}
+
+export async function fetchCoresStatusForEndpoint(
+  connection: { baseUrl: string; auth: SolrAuth | null }
+): Promise<string[]> {
+  const headers = buildSolrHeadersFrom(connection.baseUrl, connection.auth);
+  const data = await solrJsonWithHeaders<CoresStatusResponse>(
+    "admin/cores",
+    { action: "STATUS", wt: "json" },
+    headers
+  );
   if (!data.status || typeof data.status !== "object") return [];
   return Object.keys(data.status);
+}
+
+export async function testEndpointConnection(
+  baseUrl: string,
+  auth: SolrAuth | null
+): Promise<string[]> {
+  return fetchCoresStatusForEndpoint({ baseUrl, auth });
 }
 
 export function fetchSchemaFields(core: string): Promise<SchemaFieldsResponse> {

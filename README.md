@@ -47,6 +47,10 @@ That runs `docker compose … down` for the Solr service and runs **`kill-port` 
 
 Default Solr base URL in the UI: `http://localhost:8983/solr`.
 
+## Solr endpoints (connection)
+
+The header **endpoint** dropdown lists saved Solr base URLs (default: **Local** → `http://localhost:8983/solr`). Use **Manage endpoints…** or the gear icon to add, edit, or remove connections, optional labels, and per-endpoint Basic auth. The last selected **core** is remembered per endpoint. Settings are stored in the browser (`localStorage`).
+
 ## Regenerate seed JSON
 
 ```bash

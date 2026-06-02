@@ -35,6 +35,16 @@ function whereDockerOnWindows(cwd) {
   return existsSync(p) && dockerClientOk(p, cwd) ? p : null;
 }
 
+/** @param {string} dockerExe @param {string} cwd */
+export function dockerDaemonOk(dockerExe, cwd) {
+  const r = spawnSync(dockerExe, ["info"], {
+    stdio: "ignore",
+    cwd,
+    shell: false,
+  });
+  return r.status === 0;
+}
+
 /** @param {string} cwd */
 export function findDockerExe(cwd) {
   const raw = process.env.DOCKER_EXE?.trim().replace(/^["']|["']$/g, "");

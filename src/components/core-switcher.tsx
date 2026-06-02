@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { RefreshCw, Settings2 } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -11,19 +11,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EndpointManager } from "@/components/endpoint-manager";
+import { EndpointSwitcher } from "@/components/endpoint-switcher";
 import { useSolrStore } from "@/lib/stores/solr-store";
-import { ConnectionSettings } from "@/components/connection-settings";
+import { cn } from "@/lib/utils";
 
 export function CoreSwitcher() {
-  const baseUrl = useSolrStore((s) => s.baseUrl);
+  const activeEndpointId = useSolrStore((s) => s.activeEndpointId);
   const cores = useSolrStore((s) => s.cores);
   const currentCore = useSolrStore((s) => s.currentCore);
   const setCurrentCore = useSolrStore((s) => s.setCurrentCore);
   const [busy, setBusy] = useState(false);
+  const [managerOpen, setManagerOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    // Subscribe to baseUrl changes; refreshCores owns its loading state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBusy(true);
     void useSolrStore
@@ -42,7 +44,7 @@ export function CoreSwitcher() {
     return () => {
       alive = false;
     };
-  }, [baseUrl]);
+  }, [activeEndpointId]);
 
   const handleRefresh = () => {
     setBusy(true);
@@ -58,39 +60,53 @@ export function CoreSwitcher() {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <Select
-        value={currentCore}
-        onValueChange={(value) => setCurrentCore(value)}
-        disabled={cores.length === 0 || busy}
-      >
-        <SelectTrigger className="min-w-[220px]">
-          <SelectValue
-            placeholder={
-              cores.length === 0 ? "No cores (check Solr)" : "Select core"
-            }
-          />
-        </SelectTrigger>
-        <SelectContent>
-          {cores.map((c) => (
-            <SelectItem key={c.name} value={c.name}>
-              {c.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        type="button"
-        variant="outline"
-        size="icon-sm"
-        className="size-8 shrink-0"
-        onClick={handleRefresh}
-        disabled={busy}
-        aria-label="Refresh cores"
-      >
-        <RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`} />
-      </Button>
-      <ConnectionSettings />
-    </div>
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <EndpointSwitcher onManage={() => setManagerOpen(true)} />
+        <Select
+          value={currentCore}
+          onValueChange={(value) => setCurrentCore(value)}
+          disabled={cores.length === 0 || busy}
+        >
+          <SelectTrigger className="min-w-[180px]">
+            <SelectValue
+              placeholder={
+                cores.length === 0 ? "No cores (check Solr)" : "Select core"
+              }
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {cores.map((c) => (
+              <SelectItem key={c.name} value={c.name}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="size-8 shrink-0"
+          onClick={handleRefresh}
+          disabled={busy}
+          aria-label="Refresh cores"
+        >
+          <RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`} />
+        </Button>
+        <button
+          type="button"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "icon-sm" }),
+            "size-8 shrink-0"
+          )}
+          aria-label="Manage Solr endpoints"
+          onClick={() => setManagerOpen(true)}
+        >
+          <Settings2 className="size-4" />
+        </button>
+      </div>
+      <EndpointManager open={managerOpen} onOpenChange={setManagerOpen} />
+    </>
   );
 }

@@ -5,7 +5,7 @@
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { findDockerExe } from "./lib/find-docker.mjs";
+import { dockerDaemonOk, findDockerExe } from "./lib/find-docker.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..");
@@ -33,6 +33,20 @@ Fix:
   • If Docker is only inside WSL, run this project from WSL or add Docker to Windows PATH.
 
 Then run: npm run dev:stack
+`);
+  process.exit(1);
+}
+
+if (!dockerDaemonOk(dockerExe, repoRoot)) {
+  console.error(`
+[dev:stack] Docker is installed but the engine is not running.
+
+Fix:
+  • Open Docker Desktop and wait until the status shows "Engine running" (whale icon steady, not starting).
+  • On Windows, you can start it from the Start menu: "Docker Desktop".
+  • Then run again: npm run dev:stack
+
+If Docker Desktop is already open, wait a minute and retry — first start can take 1–2 minutes.
 `);
   process.exit(1);
 }

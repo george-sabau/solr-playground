@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Play, TableProperties } from "lucide-react";
-import { useSolrStore } from "@/lib/stores/solr-store";
+import { useSolrStore, useActiveBaseUrl } from "@/lib/stores/solr-store";
 import { SchemaProvider } from "@/lib/schema/context";
 import { SchemaPanel } from "@/components/schema-panel";
 import { QueryPlayground } from "@/components/query-playground";
@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
 type HomeTab = "play" | "analyze";
 
 export function HomeContent() {
-  const baseUrl = useSolrStore((s) => s.baseUrl);
+  const baseUrl = useActiveBaseUrl();
+  const activeEndpointId = useSolrStore((s) => s.activeEndpointId);
   const currentCore = useSolrStore((s) => s.currentCore);
   const [tab, setTab] = useState<HomeTab>("play");
 
@@ -68,7 +69,7 @@ export function HomeContent() {
         </div>
 
         {tab === "play" ? (
-          <QueryPlayground key={`${baseUrl}::${currentCore ?? "_"}`} />
+          <QueryPlayground key={`${activeEndpointId}::${currentCore ?? "_"}`} />
         ) : (
           <SchemaPanel />
         )}
