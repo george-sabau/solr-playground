@@ -4,6 +4,27 @@ Sidecar UI for **Apache Solr** — query and analysis only (no data mutations). 
 
 See [`.cursor-master-plan.md`](.cursor-master-plan.md) for the roadmap and change history.
 
+## Preview
+
+Visual sidecar for Solr query and analysis — build searches, inspect schema, switch endpoints and cores.
+
+![Query builder with field matchers and scored results](docs/screenshots/play-query-builder.png)
+
+| Query builder | Classic syntax | Analyze (schema) |
+| :---: | :---: | :---: |
+| ![Query builder](docs/screenshots/play-query-builder.png) | ![Classic syntax](docs/screenshots/play-classic.png) | ![Schema analyze tab](docs/screenshots/analyze-schema.png) |
+| Multi-field matchers, import from Solr URL, scored hits | Raw `q` + parser, live request preview | Field types, flags, dynamic rules |
+
+**Regenerate screenshots** (Playwright; needs Solr + app on :3000):
+
+```bash
+npm run dev:stack                    # separate terminal, leave running
+npx playwright install chromium      # once, after npm install
+npm run screenshots
+```
+
+Output goes to [`docs/screenshots/`](docs/screenshots/). Override the app URL with `APP_URL=http://localhost:3000` if needed. See [Scripts](#scripts) for the full command list.
+
 ## Prerequisites
 
 - Node.js 20+ (for the app)
@@ -51,6 +72,8 @@ Default Solr base URL in the UI: `http://localhost:8983/solr`.
 
 The header **endpoint** dropdown lists saved Solr base URLs (default: **Local** → `http://localhost:8983/solr`). Use **Manage endpoints…** or the gear icon to add, edit, or remove connections, optional labels, and per-endpoint Basic auth. The last selected **core** is remembered per endpoint. Settings are stored in the browser (`localStorage`).
 
+![Endpoint and core controls](docs/screenshots/header-connection.png)
+
 ## Regenerate seed JSON
 
 ```bash
@@ -68,6 +91,19 @@ Then follow [`solr/README.md`](solr/README.md) if you need a full re-index.
 | `npm run dev` | Next.js only (Solr must already be running) |
 | `npm run seed:solr` | Rewrite `solr/data/*.json` |
 | `npm run build` | Production build |
+| `npm run screenshots` | Regenerate README preview PNGs (requires `dev:stack` + Chromium) |
+
+### Regenerating screenshots
+
+With Solr and the app running:
+
+```bash
+npm run dev:stack                    # separate terminal
+npx playwright install chromium      # once, after npm install
+npm run screenshots
+```
+
+Writes PNGs to [`docs/screenshots/`](docs/screenshots/).
 
 ## License
 

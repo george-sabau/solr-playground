@@ -9,7 +9,8 @@
     "seed:solr": "node scripts/generate-solr-seed.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "screenshots": "node scripts/capture-screenshots.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
@@ -34,6 +35,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "kill-port": "^2.0.1",
+    "playwright": "^1.52.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
