@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSqliteRepository } from "@/lib/persistence";
 import { DuplicateTemplateNameError } from "@/lib/persistence/types";
+import { formatDbError } from "@/lib/persistence/db-errors";
 import type { QueryTemplatePayload } from "@/lib/query/template-types";
 import { buildTemplatePayload } from "@/lib/query/template-types";
 import type { QueryParserMode } from "@/lib/query/types";
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
       }))
     );
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Database error";
+    const message = formatDbError(e);
     console.error("[templates GET]", message, e);
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
     if (e instanceof DuplicateTemplateNameError) {
       return NextResponse.json({ error: e.message }, { status: 409 });
     }
-    const message = e instanceof Error ? e.message : "Database error";
+    const message = formatDbError(e);
     console.error("[templates POST]", message, e);
     return NextResponse.json({ error: message }, { status: 500 });
   }

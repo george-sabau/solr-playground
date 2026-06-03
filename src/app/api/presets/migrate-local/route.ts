@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPersistenceRepository } from "@/lib/persistence";
+import { formatDbError } from "@/lib/persistence/db-errors";
 import { connectionStateFromLegacyPayload } from "@/lib/persistence/legacy-migrate";
 
 export const runtime = "nodejs";
@@ -23,7 +24,8 @@ export async function POST(request: Request) {
     repo.saveConnectionState(parsed);
     return NextResponse.json({ migrated: true });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Migration error";
+    const message = formatDbError(e);
+    console.error("[migrate-local POST]", message, e);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

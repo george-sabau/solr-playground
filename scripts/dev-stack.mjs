@@ -6,6 +6,10 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { dockerDaemonOk, findDockerExe } from "./lib/find-docker.mjs";
+import {
+  ensureBetterSqlite3ForNode,
+  envWithNodeFirst,
+} from "./lib/resolve-node.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..");
@@ -66,15 +70,16 @@ if (up.error || up.status !== 0) {
   process.exit(up.status ?? 1);
 }
 
+const nodeExe = ensureBetterSqlite3ForNode(repoRoot, { label: "dev:stack" });
 const nextBin = join(repoRoot, "node_modules", "next", "dist", "bin", "next");
 const dbPath = join(repoRoot, ".data", "solr-playground.db");
-const next = spawnSync(process.execPath, [nextBin, "dev"], {
+const next = spawnSync(nodeExe, [nextBin, "dev"], {
   stdio: "inherit",
   cwd: repoRoot,
-  env: {
+  env: envWithNodeFirst(nodeExe, {
     ...process.env,
     DATABASE_PATH: process.env.DATABASE_PATH ?? dbPath,
-  },
+  }),
 });
 
 process.exit(next.status ?? 0);

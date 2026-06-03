@@ -3,6 +3,7 @@ import {
   getPersistenceRepository,
   getSqliteRepository,
 } from "@/lib/persistence";
+import { formatDbError } from "@/lib/persistence/db-errors";
 import type { ConnectionState } from "@/lib/persistence/types";
 import { createDefaultEndpoint, type SolrEndpoint } from "@/lib/solr/endpoints";
 
@@ -41,7 +42,8 @@ export async function GET() {
     }
     return NextResponse.json(state);
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Database error";
+    const message = formatDbError(e);
+    console.error("[connections GET]", message, e);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -72,7 +74,8 @@ export async function PUT(request: Request) {
     getPersistenceRepository().saveConnectionState(state);
     return NextResponse.json({ ok: true });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Database error";
+    const message = formatDbError(e);
+    console.error("[connections PUT]", message, e);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

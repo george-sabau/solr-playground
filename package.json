@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22"
+    "node": ">=22 <23"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/run-next-dev.mjs",
     "dev:stack": "node scripts/dev-stack.mjs",
     "stop:stack": "node scripts/stop-stack.mjs",
     "seed:solr": "node scripts/generate-solr-seed.mjs",
@@ -15,9 +15,10 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:regression": "vitest run src/lib/persistence src/lib/solr/endpoints.test.ts src/app/api/presets",
     "test:watch": "vitest",
     "db:migrate": "node scripts/db-migrate.mjs",
-    "postinstall": "npm rebuild better-sqlite3",
+    "postinstall": "node scripts/ensure-native-modules.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs"
   },
   "dependencies": {

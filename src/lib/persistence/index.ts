@@ -10,7 +10,7 @@ export type {
 } from "./types";
 export { DuplicateTemplateNameError } from "./types";
 export type { PersistenceRepository } from "./repository";
-export { getDatabasePath, getDb, getDrizzle } from "./db";
+export { getDatabasePath, getDb, getDrizzle, resetDbForTests } from "./db";
 export { encryptSecret, decryptSecret, isUsingDevFallbackSecret } from "./crypto";
 
 let repository: PersistenceRepository | null = null;
@@ -32,4 +32,10 @@ export function getVectorRepository(): VectorRepository {
 
 export function getSqliteRepository(): SqlitePersistenceRepository {
   return getPersistenceRepository() as SqlitePersistenceRepository;
+}
+
+/** Clear repository singleton (Vitest isolation). */
+export function resetPersistenceForTests(): void {
+  repository = null;
+  vectorRepository = null;
 }

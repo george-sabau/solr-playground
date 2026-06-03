@@ -48,7 +48,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run test
+      - name: Persistence & presets API regression tests
+        run: npm run test:regression
+        env:
+          DATABASE_PATH: ":memory:"
+      - name: Full unit test suite
+        run: npm run test
+        env:
+          DATABASE_PATH: ":memory:"
 
   build:
     name: build
@@ -74,6 +81,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm rebuild better-sqlite3
       - run: npm run db:migrate
         env:
           DATABASE_PATH: ":memory:"

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSqliteRepository } from "@/lib/persistence";
+import { formatDbError } from "@/lib/persistence/db-errors";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,8 @@ export async function GET(_request: Request, context: RouteContext) {
     }
     return NextResponse.json(record);
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Database error";
+    const message = formatDbError(e);
+    console.error("[templates GET id]", message, e);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -31,7 +33,8 @@ export async function DELETE(_request: Request, context: RouteContext) {
     repo.deleteQueryTemplate(id);
     return NextResponse.json({ ok: true });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Database error";
+    const message = formatDbError(e);
+    console.error("[templates DELETE]", message, e);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

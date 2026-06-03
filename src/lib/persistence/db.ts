@@ -69,3 +69,16 @@ export function getDrizzle() {
   }
   return globalForDb.__solrPlaygroundDrizzle;
 }
+
+/** Close and clear cached DB handles (Vitest isolation). */
+export function resetDbForTests(): void {
+  if (globalForDb.__solrPlaygroundDb) {
+    try {
+      globalForDb.__solrPlaygroundDb.close();
+    } catch {
+      /* already closed */
+    }
+  }
+  globalForDb.__solrPlaygroundDb = undefined;
+  globalForDb.__solrPlaygroundDrizzle = undefined;
+}

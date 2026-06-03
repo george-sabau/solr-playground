@@ -52,7 +52,7 @@ Every push and pull request to `main` runs [GitHub Actions](.github/workflows/ci
 | ----- | ------- |
 | lint | `npm run lint` |
 | typecheck | `npm run typecheck` |
-| test | `npm run test` |
+| test | `npm run test` (query logic, **template persistence**, compare AI payload) |
 | build | `npm run build` |
 | db-migrate | `DATABASE_PATH=:memory: npm run db:migrate` |
 
@@ -70,7 +70,7 @@ After the workflow is green on `main`, you can require these checks under **Sett
 
 ## Prerequisites
 
-- Node.js 22+ (matches CI; see `engines` in `package.json`)
+- Node.js **22.x** (matches CI; see [`engines`](package.json) and [`.nvmrc`](.nvmrc) — use `nvm use` or `fnm use` before `npm install`)
 - Docker Desktop (or Docker Engine + Compose v2) for the local Solr showcase
 
 ## Recommended: Solr + app in one command
@@ -157,13 +157,21 @@ Apply schema manually (also runs automatically when the app opens the DB):
 npm run db:migrate
 ```
 
-If `db:migrate` or the app fails with `NODE_MODULE_VERSION` / `better_sqlite3.node`, your Node version changed since `npm install`. Rebuild the native module:
+If `db:migrate`, template load, or connection save fails with `NODE_MODULE_VERSION` / `better_sqlite3.node`, your **Node version changed since `npm install`** (common after upgrading to Node 24). Templates and endpoints live in `.data/solr-playground.db` — the data is not deleted; SQLite simply cannot open until the native module matches your Node runtime.
+
+Fix:
 
 ```bash
+node -v                  # should be 22.x for this project
+nvm use                  # or fnm use — reads .nvmrc
 npm rebuild better-sqlite3
+# if still failing:
+npm ci
 ```
 
-(`postinstall` runs this automatically after `npm install`.)
+(`postinstall` runs `npm rebuild better-sqlite3` automatically after `npm install`.)
+
+`npm run dev:stack` runs a preflight check and prints these instructions if the module fails to load.
 
 The database includes a **sqlite-vec** `embedding_chunks` virtual table (`float[384]`) as a stub for future semantic search; the app does not write embeddings yet.
 
@@ -260,7 +268,7 @@ Then follow [`solr/README.md`](solr/README.md) if you need a full re-index.
 | `npm run build` | Production build |
 | `npm run lint` | ESLint (Next.js core-web-vitals + TypeScript) |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run test` | Vitest unit tests (`src/**/*.test.ts`) |
+| `npm run test` | Vitest unit tests (`src/**/*.test.ts`, incl. query templates + SQLite persistence) |
 | `npm run test:watch` | Vitest in watch mode |
 | `npm run screenshots` | Regenerate README preview PNGs (requires `dev:stack` + Chromium; see [Preview](#preview)) |
 
