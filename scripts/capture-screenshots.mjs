@@ -169,29 +169,72 @@ async function captureHeaderScreenshot(page) {
   });
 }
 
-async function captureCompareScreenshot(page) {
+async function runCompareWithHits(page) {
   await clickCompareTab(page);
 
   await loadCompareSource(
     page,
     "Source A",
-    "http://localhost:8983/solr/customers/select?q=city:Par&wt=json"
+    "http://localhost:8983/solr/customers/select?q=city:Paris&wt=json"
   );
   await loadCompareSource(
     page,
     "Source B",
-    "http://localhost:8983/solr/customers/select?q=first_name:Par&wt=json"
+    "http://localhost:8983/solr/customers/select?q=city:Paris~1&wt=json"
   );
 
-  await page.locator("#compare-search").fill("Par");
+  await page.locator("#compare-search").fill("Paris");
   await page.getByRole("button", { name: "Compare queries" }).click();
-  await page.getByText("Source A vs Source B").waitFor({ timeout: 30_000 });
+  await page.getByRole("heading", { name: "Comparison summary" }).waitFor({
+    timeout: 30_000,
+  });
   await page.getByText(/\d+\s+hits/).first().waitFor({ timeout: 30_000 });
   await page.waitForTimeout(500);
+}
+
+async function captureCompareScreenshot(page) {
+  await runCompareWithHits(page);
 
   const section = page.locator("section").filter({ hasText: "Compare" }).first();
   await section.screenshot({
     path: path.join(OUT_DIR, "compare-overview.png"),
+  });
+}
+
+async function captureCompareAiScreenshot(page) {
+  await runCompareWithHits(page);
+
+  const evaluateRes = await page.request.get(`${APP_URL}/api/compare/evaluate`);
+  const { available } = await evaluateRes.json();
+  if (!available) {
+    console.warn(
+      "Skipping compare-ai-summary.png — set GEMINI_API_KEY in .env.local and restart dev:stack"
+    );
+    return;
+  }
+
+  const aiBtn = page.getByRole("button", { name: "Evaluate relevance (AI)" });
+  for (let i = 0; i < 120; i++) {
+    if (!(await aiBtn.isDisabled())) break;
+    await page.waitForTimeout(500);
+  }
+  if (await aiBtn.isDisabled()) {
+    console.warn(
+      "Skipping compare-ai-summary.png — AI button stayed disabled (need hits on both sides)"
+    );
+    return;
+  }
+
+  await aiBtn.click();
+  await page.getByText("AI verdict:").waitFor({ timeout: 90_000 });
+  await page.waitForTimeout(500);
+
+  const aiPanel = page
+    .locator("details")
+    .filter({ has: page.getByRole("heading", { name: "AI summary" }) })
+    .first();
+  await aiPanel.screenshot({
+    path: path.join(OUT_DIR, "compare-ai-summary.png"),
   });
 }
 
@@ -246,6 +289,7 @@ async function main() {
   await captureResultsExpandedScreenshot(page);
   await captureClassicScreenshot(page);
   await captureCompareScreenshot(page);
+  await captureCompareAiScreenshot(page);
   await captureAnalyzeScreenshot(page);
 
   await browser.close();
