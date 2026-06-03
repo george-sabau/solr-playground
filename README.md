@@ -13,7 +13,7 @@ The app is a single page at `/` with three top-level tabs: **Play**, **Compare**
 | Tab | Sub-areas | Highlights |
 | --- | --------- | ---------- |
 | **Play** | Classic syntax (default) · Query builder | Lucene / edismax / dismax parsers; dual **request preview** (app proxy + upstream Solr URL); 20-row pagination; expandable hits with **live indexed-token analysis** via `/analysis/field` |
-| **Compare** | Source A · Source B | Load from Solr URL or saved template; shared search term; top-10 side-by-side results; deterministic metrics (overlap, Jaccard, rank shift); optional **Evaluate relevance (AI)** when an API key is set |
+| **Compare** | Source A · Source B | Load from Solr URL or saved template; shared search term; top-10 side-by-side results; collapsible **Comparison summary** (deterministic metrics); optional **AI summary** via Gemini |
 | **Analyze** | Schema panel | Static fields, dynamic rules, copyFields, internal fields; field-type popover with analyzer chain; Reload |
 
 The local Docker showcase ships two cores — **`customers`** and **`products`** — with seed data in [`solr/data/`](solr/data/). See [`solr/README.md`](solr/README.md) for Solr-only setup and re-indexing.
@@ -196,22 +196,25 @@ The **Compare** tab runs two query setups side by side against the same core and
 
 1. **Source A** and **Source B** — each has **Load from source** (Solr URL or saved template), same as Query builder. Both must be loaded before comparing.
 2. **Search (shared)** — one search box; both plans use this text when you click **Compare queries** (Enter runs compare when ready).
-3. **Metrics summary** — table with Solr QTime, wall-clock time, total hits, max/avg scores; chips for overlap, Jaccard, only-in-A/B, avg rank shift, score ratio; neutral hint bullets.
+3. **Comparison summary** (collapsible) — table with Solr QTime, wall-clock time, total hits, max/avg scores; chips for overlap, Jaccard, only-in-A/B, avg rank shift, score ratio; neutral hint bullets.
 4. **Top 10** results per side (same expandable `ResultDoc` list as Play, including field analysis).
+5. **AI summary** (collapsible, below) — optional Gemini evaluation triggered by **Evaluate relevance (AI)**.
 
-The **Evaluate relevance (AI)** button appears after a comparison. When no API key is configured, it stays disabled and shows a placeholder pointing at `OPENAI_API_KEY` — no key is required for normal use.
+When no API key is configured, the AI button stays disabled and shows setup instructions — no key is required for normal compare use.
 
-### AI relevancy evaluation (optional)
+### AI relevancy evaluation (optional, Gemini)
 
-Set on the machine running Next.js:
+Copy [`.env.example`](.env.example) to `.env.local` and set your key from [Google AI Studio](https://aistudio.google.com/apikey). Restart the dev server after changing env vars.
 
 | Variable | Purpose |
 | -------- | ------- |
-| `OPENAI_API_KEY` | OpenAI API key for **Evaluate relevance (AI)** |
-| `COMPARE_AI_API_KEY` | Alternative key (takes precedence if set) |
-| `COMPARE_AI_MODEL` | Model id (default `gpt-4o-mini`) |
+| `GEMINI_API_KEY` | Google AI Studio API key for **Evaluate relevance (AI)** |
+| `COMPARE_AI_API_KEY` | Alternative key name (fallback if `GEMINI_API_KEY` is unset) |
+| `COMPARE_AI_MODEL` | Gemini model id (default `gemini-2.0-flash`) |
 
-`GET /api/compare/evaluate` reports whether a key is configured. **Evaluate relevance (AI)** sends trimmed top-10 snippets and returns a structured verdict (`a`, `b`, or `tie`) with confidence, reasons, per-side notes, and caveats.
+`GET /api/compare/evaluate` reports whether a key is configured. **Evaluate relevance (AI)** sends both full Solr `/select` response bodies (top 10) plus the deterministic comparison metrics to Gemini. The **AI summary** panel returns a verdict (`a`, `b`, or `tie`), confidence, narrative summary, reasons, metrics interpretation, per-side notes, and caveats.
+
+Implementation lives in [`src/lib/ai/compare/`](src/lib/ai/compare/) (config, payload builder, Gemini provider, evaluator).
 
 ## Analyze tab
 

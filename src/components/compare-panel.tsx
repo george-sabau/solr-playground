@@ -14,7 +14,6 @@ import {
 import { CompareSummary } from "@/components/compare-summary";
 import { compileBuilderSearch } from "@/lib/query/compile";
 import { computeCompareMetrics } from "@/lib/query/compare-metrics";
-import { toSlimCompareDocs } from "@/lib/query/compare-slim-doc";
 import { getSearchableFields } from "@/lib/query/fields";
 import {
   DEFAULT_BUILDER_STATE,
@@ -73,11 +72,6 @@ export function ComparePanel() {
     [schema.schema]
   );
 
-  const fieldOrder = useMemo(
-    () => searchableFields.map((f) => f.name),
-    [searchableFields]
-  );
-
   const metrics = useMemo(() => {
     if (!planA || !planB) return null;
     if (!responseA && !responseB) return null;
@@ -105,15 +99,6 @@ export function ComparePanel() {
     wallA,
     wallB,
   ]);
-
-  const slimA = useMemo(
-    () => toSlimCompareDocs(responseA?.response.docs ?? [], fieldOrder),
-    [responseA, fieldOrder]
-  );
-  const slimB = useMemo(
-    () => toSlimCompareDocs(responseB?.response.docs ?? [], fieldOrder),
-    [responseB, fieldOrder]
-  );
 
   const columnAReady = isCompareColumnReady(columnA);
   const columnBReady = isCompareColumnReady(columnB);
@@ -266,8 +251,8 @@ export function ComparePanel() {
 
         <CompareSummary
           metrics={metrics}
-          slimA={slimA}
-          slimB={slimB}
+          responseA={responseA}
+          responseB={responseB}
           aiAvailable={aiAvailable}
           bothSourcesReady={bothSourcesReady}
         />

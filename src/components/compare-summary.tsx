@@ -1,31 +1,60 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ChevronRight, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import type { AiCompareSummary } from "@/lib/ai/compare/types";
 import type { CompareMetricsResult } from "@/lib/query/compare-metrics";
-import type { SlimCompareDoc } from "@/lib/query/compare-slim-doc";
+import type { SelectResponse } from "@/types/solr";
 import { cn } from "@/lib/utils";
 
-export interface AiEvaluationResult {
-  winner: "a" | "b" | "tie";
-  confidence: "low" | "medium" | "high";
-  reasons: string[];
-  perSideNotes: { a: string; b: string };
-  caveats: string[];
+export type { AiCompareSummary as AiEvaluationResult };
+
+function CollapsiblePanel({
+  title,
+  defaultOpen,
+  children,
+  actions,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <details
+      className="group rounded-lg border border-border bg-card shadow-sm"
+      open={defaultOpen}
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-2 border-b border-border px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90 group-open:text-[var(--solr-accent)]" />
+        <h3 className="min-w-0 flex-1 text-sm font-semibold">{title}</h3>
+        {actions ? (
+          <div
+            className="flex shrink-0 items-center gap-2"
+            onClick={(e) => e.preventDefault()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            {actions}
+          </div>
+        ) : null}
+      </summary>
+      <div className="space-y-4 p-4">{children}</div>
+    </details>
+  );
 }
 
 export function CompareSummary({
   metrics,
-  slimA,
-  slimB,
+  responseA,
+  responseB,
   aiAvailable,
   bothSourcesReady = false,
 }: {
   metrics: CompareMetricsResult | null;
-  slimA: SlimCompareDoc[];
-  slimB: SlimCompareDoc[];
+  responseA: SelectResponse | null;
+  responseB: SelectResponse | null;
   aiAvailable: boolean;
   bothSourcesReady?: boolean;
 }) {
@@ -36,25 +65,37 @@ export function CompareSummary({
   if (!metrics) {
     return (
       <div className="rounded-lg border border-dashed border-border/80 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
-        Load two sources and run <strong className="text-foreground">Compare queries</strong>{" "}
-        to see metrics.
+        Load two sources and run{" "}
+        <strong className="text-foreground">Compare queries</strong> to see
+        metrics.
       </div>
     );
   }
 
-  const { sideA, sideB, overlap, heuristics, hints } = metrics;
-
   return (
-    <div className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-sm">
-      <CompareAiHeader
+    <div className="space-y-3">
+      <ComparisonMetricsSummary metrics={metrics} />
+      <CompareAiSummary
         key={aiResetKey}
         metrics={metrics}
-        slimA={slimA}
-        slimB={slimB}
+        responseA={responseA}
+        responseB={responseB}
         aiAvailable={aiAvailable}
         bothSourcesReady={bothSourcesReady}
       />
+    </div>
+  );
+}
 
+function ComparisonMetricsSummary({
+  metrics,
+}: {
+  metrics: CompareMetricsResult;
+}) {
+  const { sideA, sideB, overlap, heuristics, hints } = metrics;
+
+  return (
+    <CollapsiblePanel title="Comparison summary" defaultOpen>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[32rem] border-collapse text-left text-xs">
           <thead>
@@ -136,36 +177,40 @@ export function CompareSummary({
           <li key={h}>{h}</li>
         ))}
       </ul>
-
-    </div>
+    </CollapsiblePanel>
   );
 }
 
-function CompareAiHeader({
+function CompareAiSummary({
   metrics,
-  slimA,
-  slimB,
+  responseA,
+  responseB,
   aiAvailable,
   bothSourcesReady,
 }: {
   metrics: CompareMetricsResult;
-  slimA: SlimCompareDoc[];
-  slimB: SlimCompareDoc[];
+  responseA: SelectResponse | null;
+  responseB: SelectResponse | null;
   aiAvailable: boolean;
   bothSourcesReady: boolean;
 }) {
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<AiEvaluationResult | null>(null);
+  const [aiResult, setAiResult] = useState<AiCompareSummary | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
-  const { sideA, sideB, overlap } = metrics;
+  const [panelOpen, setPanelOpen] = useState(false);
+
+  const docsReady =
+    (responseA?.response.docs.length ?? 0) > 0 &&
+    (responseB?.response.docs.length ?? 0) > 0;
 
   const handleAiEvaluate = async () => {
-    if (!bothSourcesReady) {
+    if (!bothSourcesReady || !responseA || !responseB) {
       toast.error("Load both sources and run Compare queries first.");
       return;
     }
     setAiLoading(true);
     setAiError(null);
+    setPanelOpen(true);
     try {
       const res = await fetch("/api/compare/evaluate", {
         method: "POST",
@@ -173,28 +218,23 @@ function CompareAiHeader({
         body: JSON.stringify({
           searchTerm: metrics.searchTerm,
           sideA: {
-            label: sideA.label,
-            qSummary: sideA.qSummary,
-            parser: sideA.parser,
-            docs: slimA,
+            label: metrics.sideA.label,
+            qSummary: metrics.sideA.qSummary,
+            parser: metrics.sideA.parser,
+            response: responseA,
           },
           sideB: {
-            label: sideB.label,
-            qSummary: sideB.qSummary,
-            parser: sideB.parser,
-            docs: slimB,
+            label: metrics.sideB.label,
+            qSummary: metrics.sideB.qSummary,
+            parser: metrics.sideB.parser,
+            response: responseB,
           },
-          metrics: {
-            overlapCount: overlap.overlapCount,
-            jaccardTop10: overlap.jaccardTop10,
-            numFoundA: sideA.numFound,
-            numFoundB: sideB.numFound,
-          },
+          metrics,
         }),
       });
       const body = (await res.json()) as {
         error?: string;
-        evaluation?: AiEvaluationResult;
+        evaluation?: AiCompareSummary;
       };
       if (!res.ok) {
         throw new Error(body.error ?? `AI evaluation failed (${res.status})`);
@@ -221,85 +261,134 @@ function CompareAiHeader({
           ? "Tie"
           : null;
 
+  const evaluateButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-8 text-xs"
+      disabled={!bothSourcesReady || !aiAvailable || aiLoading || !docsReady}
+      onClick={() => void handleAiEvaluate()}
+      title={
+        aiAvailable
+          ? "Compare full result lists with Gemini"
+          : "Set GEMINI_API_KEY in .env.local on the server"
+      }
+    >
+      {aiLoading ? (
+        <Loader2 className="size-3.5 animate-spin" />
+      ) : (
+        <Sparkles className="size-3.5" />
+      )}
+      Evaluate relevance (AI)
+    </Button>
+  );
+
   return (
-    <>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">Source A vs Source B</h3>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 text-xs"
-          disabled={
-            !bothSourcesReady ||
-            !aiAvailable ||
-            aiLoading ||
-            slimA.length === 0 ||
-            slimB.length === 0
-          }
-          onClick={() => void handleAiEvaluate()}
-          title={
-            aiAvailable
-              ? "Compare top-10 relevance with AI"
-              : "Set OPENAI_API_KEY or COMPARE_AI_API_KEY on the server"
-          }
-        >
-          {aiLoading ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <Sparkles className="size-3.5" />
-          )}
-          Evaluate relevance (AI)
-        </Button>
-      </div>
-
-      {!aiAvailable && (
-        <p className="text-[11px] text-muted-foreground">
-          AI evaluation is optional. Set{" "}
-          <code className="rounded bg-muted px-1 font-mono">OPENAI_API_KEY</code> on
-          the server to enable.
-        </p>
-      )}
-
-      {aiResult && (
+    <details
+      className="group rounded-lg border border-border bg-card shadow-sm"
+      open={panelOpen || !!aiResult}
+      onToggle={(e) => setPanelOpen((e.target as HTMLDetailsElement).open)}
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-2 border-b border-border px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90 group-open:text-[var(--solr-accent)]" />
+        <h3 className="min-w-0 flex-1 text-sm font-semibold">AI summary</h3>
         <div
-          className={cn(
-            "rounded-md border px-3 py-2 text-xs",
-            aiResult.winner === "tie"
-              ? "border-border bg-muted/30"
-              : "border-[var(--solr-accent)]/40 bg-[var(--solr-accent)]/5"
-          )}
+          className="flex shrink-0 items-center gap-2"
+          onClick={(e) => e.preventDefault()}
+          onKeyDown={(e) => e.stopPropagation()}
         >
-          <p className="font-medium text-foreground">
-            AI verdict: {winnerLabel}
-            <span className="ml-2 font-normal text-muted-foreground">
-              ({aiResult.confidence} confidence)
-            </span>
-          </p>
-          <ul className="mt-2 list-inside list-disc space-y-0.5 text-muted-foreground">
-            {aiResult.reasons.map((r) => (
-              <li key={r}>{r}</li>
-            ))}
-          </ul>
-          <p className="mt-2 text-muted-foreground">
-            <span className="font-medium text-foreground">A:</span>{" "}
-            {aiResult.perSideNotes.a}
-          </p>
-          <p className="mt-1 text-muted-foreground">
-            <span className="font-medium text-foreground">B:</span>{" "}
-            {aiResult.perSideNotes.b}
-          </p>
-          {aiResult.caveats.length > 0 && (
-            <p className="mt-2 text-[10px] italic text-muted-foreground">
-              {aiResult.caveats.join(" ")}
-            </p>
-          )}
+          {evaluateButton}
         </div>
-      )}
-      {aiError && (
-        <p className="text-[11px] text-destructive">{aiError}</p>
-      )}
-    </>
+      </summary>
+      <div className="space-y-3 p-4">
+        {!aiAvailable && (
+          <p className="text-[11px] text-muted-foreground">
+            AI evaluation is optional. Copy{" "}
+            <code className="rounded bg-muted px-1 font-mono">.env.example</code>{" "}
+            to <code className="rounded bg-muted px-1 font-mono">.env.local</code>{" "}
+            and set{" "}
+            <code className="rounded bg-muted px-1 font-mono">GEMINI_API_KEY</code>{" "}
+            from{" "}
+            <a
+              href="https://aistudio.google.com/apikey"
+              className="text-[var(--solr-accent-muted)] underline-offset-2 hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Google AI Studio
+            </a>
+            .
+          </p>
+        )}
+
+        {aiResult && (
+          <div
+            className={cn(
+              "space-y-3 rounded-md border px-3 py-3 text-xs",
+              aiResult.winner === "tie"
+                ? "border-border bg-muted/30"
+                : "border-[var(--solr-accent)]/40 bg-[var(--solr-accent)]/5"
+            )}
+          >
+            <p className="font-medium text-foreground">
+              AI verdict: {winnerLabel}
+              <span className="ml-2 font-normal text-muted-foreground">
+                ({aiResult.confidence} confidence)
+              </span>
+            </p>
+            {aiResult.summary && (
+              <p className="leading-relaxed text-foreground">{aiResult.summary}</p>
+            )}
+            {aiResult.reasons.length > 0 && (
+              <div>
+                <p className="mb-1 font-medium text-foreground">Why</p>
+                <ul className="list-inside list-disc space-y-0.5 text-muted-foreground">
+                  {aiResult.reasons.map((r) => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {aiResult.metricsInterpretation.length > 0 && (
+              <div>
+                <p className="mb-1 font-medium text-foreground">
+                  Metrics interpretation
+                </p>
+                <ul className="list-inside list-disc space-y-0.5 text-muted-foreground">
+                  {aiResult.metricsInterpretation.map((m) => (
+                    <li key={m}>{m}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <p className="text-muted-foreground">
+              <span className="font-medium text-foreground">A:</span>{" "}
+              {aiResult.perSideNotes.a}
+            </p>
+            <p className="text-muted-foreground">
+              <span className="font-medium text-foreground">B:</span>{" "}
+              {aiResult.perSideNotes.b}
+            </p>
+            {aiResult.caveats.length > 0 && (
+              <p className="text-[10px] italic text-muted-foreground">
+                {aiResult.caveats.join(" ")}
+              </p>
+            )}
+          </div>
+        )}
+
+        {aiError && <p className="text-[11px] text-destructive">{aiError}</p>}
+
+        {aiAvailable && !aiResult && !aiError && !aiLoading && (
+          <p className="text-[11px] text-muted-foreground">
+            Click <strong className="text-foreground">Evaluate relevance (AI)</strong>{" "}
+            to send both full Solr result lists and the comparison metrics to Gemini
+            for a relevance summary.
+          </p>
+        )}
+      </div>
+    </details>
   );
 }
 
