@@ -2,6 +2,9 @@
   "name": "solr-playground",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:stack": "node scripts/dev-stack.mjs",
@@ -9,7 +12,10 @@
     "seed:solr": "node scripts/generate-solr-seed.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:migrate": "node scripts/db-migrate.mjs",
     "postinstall": "npm rebuild better-sqlite3",
     "screenshots": "node scripts/capture-screenshots.mjs"
@@ -44,6 +50,7 @@
     "kill-port": "^2.0.1",
     "playwright": "^1.52.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }

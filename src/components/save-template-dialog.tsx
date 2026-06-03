@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { BookmarkPlus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -64,11 +64,10 @@ export function SaveTemplateDialog({
     }
   }, [endpointId, core]);
 
-  useEffect(() => {
-    if (open) {
-      void refreshList();
-    }
-  }, [open, refreshList]);
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (next) void refreshList();
+  };
 
   const handleSave = async () => {
     const trimmed = name.trim();
@@ -122,12 +121,12 @@ export function SaveTemplateDialog({
         variant="outline"
         size="sm"
         className="h-8 text-xs"
-        onClick={() => setOpen(true)}
+        onClick={() => handleOpenChange(true)}
       >
         <BookmarkPlus className="size-3.5" />
         Save as template
       </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Query template</DialogTitle>

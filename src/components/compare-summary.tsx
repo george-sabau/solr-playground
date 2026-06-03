@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,14 +29,9 @@ export function CompareSummary({
   aiAvailable: boolean;
   bothSourcesReady?: boolean;
 }) {
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<AiEvaluationResult | null>(null);
-  const [aiError, setAiError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setAiResult(null);
-    setAiError(null);
-  }, [metrics?.sideA.qSummary, metrics?.sideB.qSummary, metrics?.searchTerm]);
+  const aiResetKey = metrics
+    ? `${metrics.searchTerm}|${metrics.sideA.qSummary}|${metrics.sideB.qSummary}`
+    : "idle";
 
   if (!metrics) {
     return (
@@ -49,106 +44,16 @@ export function CompareSummary({
 
   const { sideA, sideB, overlap, heuristics, hints } = metrics;
 
-  const handleAiEvaluate = async () => {
-    if (!bothSourcesReady) {
-      toast.error("Load both sources and run Compare queries first.");
-      return;
-    }
-    if (!metrics) {
-      toast.error("Run Compare queries before AI evaluation.");
-      return;
-    }
-    setAiLoading(true);
-    setAiError(null);
-    try {
-      const res = await fetch("/api/compare/evaluate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          searchTerm: metrics.searchTerm,
-          sideA: {
-            label: sideA.label,
-            qSummary: sideA.qSummary,
-            parser: sideA.parser,
-            docs: slimA,
-          },
-          sideB: {
-            label: sideB.label,
-            qSummary: sideB.qSummary,
-            parser: sideB.parser,
-            docs: slimB,
-          },
-        }),
-      });
-      const body = (await res.json()) as {
-        error?: string;
-        evaluation?: AiEvaluationResult;
-      };
-      if (!res.ok) {
-        throw new Error(body.error ?? `AI evaluation failed (${res.status})`);
-      }
-      if (!body.evaluation) {
-        throw new Error("No evaluation returned.");
-      }
-      setAiResult(body.evaluation);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "AI evaluation failed";
-      setAiError(msg);
-      toast.error(msg);
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const winnerLabel =
-    aiResult?.winner === "a"
-      ? "Source A"
-      : aiResult?.winner === "b"
-        ? "Source B"
-        : aiResult?.winner === "tie"
-          ? "Tie"
-          : null;
-
   return (
     <div className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">Source A vs Source B</h3>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 text-xs"
-          disabled={
-            !bothSourcesReady ||
-            !aiAvailable ||
-            aiLoading ||
-            !metrics ||
-            slimA.length === 0 ||
-            slimB.length === 0
-          }
-          onClick={() => void handleAiEvaluate()}
-          title={
-            aiAvailable
-              ? "Compare top-10 relevance with AI"
-              : "Set OPENAI_API_KEY or COMPARE_AI_API_KEY on the server"
-          }
-        >
-          {aiLoading ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <Sparkles className="size-3.5" />
-          )}
-          Evaluate relevance (AI)
-        </Button>
-      </div>
-
-      {!aiAvailable && (
-        <p className="text-[11px] text-muted-foreground">
-          AI evaluation is optional. Set{" "}
-          <code className="rounded bg-muted px-1 font-mono">OPENAI_API_KEY</code> on
-          the server to enable.
-        </p>
-      )}
+      <CompareAiHeader
+        key={aiResetKey}
+        metrics={metrics}
+        slimA={slimA}
+        slimB={slimB}
+        aiAvailable={aiAvailable}
+        bothSourcesReady={bothSourcesReady}
+      />
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[32rem] border-collapse text-left text-xs">
@@ -232,6 +137,130 @@ export function CompareSummary({
         ))}
       </ul>
 
+    </div>
+  );
+}
+
+function CompareAiHeader({
+  metrics,
+  slimA,
+  slimB,
+  aiAvailable,
+  bothSourcesReady,
+}: {
+  metrics: CompareMetricsResult;
+  slimA: SlimCompareDoc[];
+  slimB: SlimCompareDoc[];
+  aiAvailable: boolean;
+  bothSourcesReady: boolean;
+}) {
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<AiEvaluationResult | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const { sideA, sideB, overlap } = metrics;
+
+  const handleAiEvaluate = async () => {
+    if (!bothSourcesReady) {
+      toast.error("Load both sources and run Compare queries first.");
+      return;
+    }
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await fetch("/api/compare/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          searchTerm: metrics.searchTerm,
+          sideA: {
+            label: sideA.label,
+            qSummary: sideA.qSummary,
+            parser: sideA.parser,
+            docs: slimA,
+          },
+          sideB: {
+            label: sideB.label,
+            qSummary: sideB.qSummary,
+            parser: sideB.parser,
+            docs: slimB,
+          },
+          metrics: {
+            overlapCount: overlap.overlapCount,
+            jaccardTop10: overlap.jaccardTop10,
+            numFoundA: sideA.numFound,
+            numFoundB: sideB.numFound,
+          },
+        }),
+      });
+      const body = (await res.json()) as {
+        error?: string;
+        evaluation?: AiEvaluationResult;
+      };
+      if (!res.ok) {
+        throw new Error(body.error ?? `AI evaluation failed (${res.status})`);
+      }
+      if (!body.evaluation) {
+        throw new Error("No evaluation returned.");
+      }
+      setAiResult(body.evaluation);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "AI evaluation failed";
+      setAiError(msg);
+      toast.error(msg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const winnerLabel =
+    aiResult?.winner === "a"
+      ? "Source A"
+      : aiResult?.winner === "b"
+        ? "Source B"
+        : aiResult?.winner === "tie"
+          ? "Tie"
+          : null;
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">Source A vs Source B</h3>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          disabled={
+            !bothSourcesReady ||
+            !aiAvailable ||
+            aiLoading ||
+            slimA.length === 0 ||
+            slimB.length === 0
+          }
+          onClick={() => void handleAiEvaluate()}
+          title={
+            aiAvailable
+              ? "Compare top-10 relevance with AI"
+              : "Set OPENAI_API_KEY or COMPARE_AI_API_KEY on the server"
+          }
+        >
+          {aiLoading ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="size-3.5" />
+          )}
+          Evaluate relevance (AI)
+        </Button>
+      </div>
+
+      {!aiAvailable && (
+        <p className="text-[11px] text-muted-foreground">
+          AI evaluation is optional. Set{" "}
+          <code className="rounded bg-muted px-1 font-mono">OPENAI_API_KEY</code> on
+          the server to enable.
+        </p>
+      )}
+
       {aiResult && (
         <div
           className={cn(
@@ -270,7 +299,7 @@ export function CompareSummary({
       {aiError && (
         <p className="text-[11px] text-destructive">{aiError}</p>
       )}
-    </div>
+    </>
   );
 }
 

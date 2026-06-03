@@ -94,10 +94,10 @@ export function LoadFromSourcePanel({
   }, [endpointId, core]);
 
   useEffect(() => {
-    if (sourceKind === "template") {
-      void refreshTemplates();
-    }
-  }, [sourceKind, refreshTemplates]);
+    if (sourceKind !== "template") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async template list load
+    void refreshTemplates();
+  }, [endpointId, core, sourceKind, refreshTemplates]);
 
   const truncateLabel = (text: string, max = 56) => {
     const t = text.trim();
@@ -247,6 +247,7 @@ export function LoadFromSourcePanel({
               onClick={() => {
                 setSourceKind(kind);
                 onImportErrorChange(null);
+                if (kind === "template") void refreshTemplates();
               }}
             >
               {label}

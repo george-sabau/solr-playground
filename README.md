@@ -1,5 +1,7 @@
 # Solr Playground
 
+[![CI](https://github.com/george-sabau/solr-playground/actions/workflows/ci.yml/badge.svg)](https://github.com/george-sabau/solr-playground/actions/workflows/ci.yml)
+
 Sidecar UI for **Apache Solr** — query and analysis only (no data mutations). Stack: Next.js, Tailwind, Shadcn UI, Zustand.
 
 See [`.cursor-master-plan.md`](.cursor-master-plan.md) for the roadmap and change history.
@@ -25,9 +27,33 @@ npm run screenshots
 
 Output goes to [`docs/screenshots/`](docs/screenshots/). Override the app URL with `APP_URL=http://localhost:3000` if needed. See [Scripts](#scripts) for the full command list.
 
+## Continuous integration
+
+Every push and pull request to `main` runs [GitHub Actions](.github/workflows/ci.yml) with five parallel jobs:
+
+| Check | Command |
+| ----- | ------- |
+| lint | `npm run lint` |
+| typecheck | `npm run typecheck` |
+| test | `npm run test` |
+| build | `npm run build` |
+| db-migrate | `DATABASE_PATH=:memory: npm run db:migrate` |
+
+Run the same checks locally before pushing:
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build
+$env:DATABASE_PATH=":memory:"; npm run db:migrate   # PowerShell
+# DATABASE_PATH=:memory: npm run db:migrate         # bash
+```
+
+Solr, Docker, and Playwright screenshot flows are **not** part of CI (local/dev only).
+
+After the workflow is green on `main`, you can require these checks under **Settings → Branches → Branch protection rules**.
+
 ## Prerequisites
 
-- Node.js 20+ (for the app)
+- Node.js 22+ (matches CI; see `engines` in `package.json`)
 - Docker Desktop (or Docker Engine + Compose v2) for the local Solr showcase
 
 ## Recommended: Solr + app in one command
@@ -161,6 +187,10 @@ Then follow [`solr/README.md`](solr/README.md) if you need a full re-index.
 | `npm run db:migrate` | Create/update SQLite schema (WAL + sqlite-vec) |
 | `npm run seed:solr` | Rewrite `solr/data/*.json` |
 | `npm run build` | Production build |
+| `npm run lint` | ESLint (Next.js core-web-vitals + TypeScript) |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run test` | Vitest unit tests (`src/**/*.test.ts`) |
+| `npm run test:watch` | Vitest in watch mode |
 | `npm run screenshots` | Regenerate README preview PNGs (requires `dev:stack` + Chromium) |
 
 ### Regenerating screenshots
