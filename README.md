@@ -6,16 +6,33 @@ Sidecar UI for **Apache Solr** — query and analysis only (no data mutations). 
 
 See [`.cursor-master-plan.md`](.cursor-master-plan.md) for the roadmap and change history.
 
+## Features overview
+
+The app is a single page at `/` with three top-level tabs: **Play**, **Compare**, and **Analyze**. Solr requests go through a Next.js proxy at `/api/solr/[...path]` so the browser never talks to Solr directly (no CORS setup required for local dev).
+
+| Tab | Sub-areas | Highlights |
+| --- | --------- | ---------- |
+| **Play** | Classic syntax (default) · Query builder | Lucene / edismax / dismax parsers; dual **request preview** (app proxy + upstream Solr URL); 20-row pagination; expandable hits with **live indexed-token analysis** via `/analysis/field` |
+| **Compare** | Source A · Source B | Load from Solr URL or saved template; shared search term; top-10 side-by-side results; deterministic metrics (overlap, Jaccard, rank shift); optional **Evaluate relevance (AI)** when an API key is set |
+| **Analyze** | Schema panel | Static fields, dynamic rules, copyFields, internal fields; field-type popover with analyzer chain; Reload |
+
+The local Docker showcase ships two cores — **`customers`** and **`products`** — with seed data in [`solr/data/`](solr/data/). See [`solr/README.md`](solr/README.md) for Solr-only setup and re-indexing.
+
 ## Preview
 
-Visual sidecar for Solr query and analysis — build searches, inspect schema, switch endpoints and cores.
+Visual sidecar for Solr query and analysis — build searches, compare two setups, inspect schema, switch endpoints and cores.
 
 ![Query builder with field matchers and scored results](docs/screenshots/play-query-builder.png)
 
-| Query builder | Classic syntax | Analyze (schema) |
+| Play (builder) | Play (classic) | Compare | Analyze |
+| :---: | :---: | :---: | :---: |
+| ![Query builder](docs/screenshots/play-query-builder.png) | ![Classic syntax](docs/screenshots/play-classic.png) | ![Compare tab](docs/screenshots/compare-overview.png) | ![Schema analyze tab](docs/screenshots/analyze-schema.png) |
+| Field matchers, fuzzy mode, Run + hits | Raw `q`, parser, request preview | A/B sources, metrics table, AI placeholder | Field types, flags, dynamic rules, copyFields |
+
+| Results (expanded) | Load from source | Connection header |
 | :---: | :---: | :---: |
-| ![Query builder](docs/screenshots/play-query-builder.png) | ![Classic syntax](docs/screenshots/play-classic.png) | ![Schema analyze tab](docs/screenshots/analyze-schema.png) |
-| Multi-field matchers, import from Solr URL, scored hits | Raw `q` + parser, live request preview | Field types, flags, dynamic rules |
+| ![Expanded hit with indexed tokens](docs/screenshots/play-results-expanded.png) | ![Template picker and Solr URL import](docs/screenshots/load-from-source.png) | ![Endpoint and core controls](docs/screenshots/header-connection.png) |
+| Score bar, field groups, indexed analysis | Template picker + Solr URL import | Endpoint/core switcher, refresh cores |
 
 **Regenerate screenshots** (Playwright; needs Solr + app on :3000):
 
@@ -25,7 +42,7 @@ npx playwright install chromium      # once, after npm install
 npm run screenshots
 ```
 
-Output goes to [`docs/screenshots/`](docs/screenshots/). Override the app URL with `APP_URL=http://localhost:3000` if needed. See [Scripts](#scripts) for the full command list.
+Output goes to [`docs/screenshots/`](docs/screenshots/). Override the app URL with `APP_URL=http://localhost:3000` if needed. See [`scripts/capture-screenshots.mjs`](scripts/capture-screenshots.mjs) for the capture flow.
 
 ## Continuous integration
 
@@ -94,9 +111,36 @@ That runs `docker compose … down` for the Solr service and runs **`kill-port` 
 
 Default Solr base URL in the UI: `http://localhost:8983/solr`.
 
+## Play tab
+
+**Classic syntax** is the default sub-tab; switch to **Query builder** for a visual field matcher UI.
+
+### Query builder
+
+- **Search** — one prompt applied to every selected field.
+- **Load from source** — import a saved template or reverse-engineer a Solr select URL (schema-validated).
+- **Field chips** — toggle indexed fields; configure matchers per field (term, phrase, exact, wildcard, prefix, fuzzy), numeric boost, min length, required (+) / prohibited (−); multiple matchers on one field are OR’d; combine fields with AND/OR.
+- **Parser** — lucene, edismax, or dismax; edismax exposes mm, min, tie, and qf (auto from selected fields or manual override).
+- **Save as template** — persist the current setup for the active endpoint + core (see [Query templates](#query-templates)).
+- **Request preview** — shows both the app proxy URL and the upstream Solr URL before you run.
+
+### Classic syntax
+
+Raw `q` string, parser selection, edismax block when applicable, and the same request preview.
+
+### Results
+
+After **Run**, the hit bar shows total hits, Solr QTime, row range, committed `q`, and parser. Results paginate 20 rows per page (Previous / Next). Each hit expands to show static, dynamic, and internal field groups with persisted values; expanding a field row fetches **indexed** token analysis from Solr on demand. **Expand all** / **Collapse all** controls are available when hits are present.
+
 ## Solr endpoints (connection)
 
-The header **endpoint** dropdown lists saved Solr base URLs (default: **Local** → `http://localhost:8983/solr`). Use **Manage endpoints…** or the gear icon to add, edit, or remove connections, optional labels, and per-endpoint Basic auth. The last selected **core** is remembered per endpoint. Settings are stored in a **local SQLite database** on the machine running the app (not in the browser). On first load after an upgrade, existing `localStorage` data is migrated once into the database.
+The header **endpoint** dropdown lists saved Solr base URLs (default: **Local** → `http://localhost:8983/solr`). On wide screens, chips show the active endpoint label and core name.
+
+- **Manage endpoints…** or the gear icon — add, edit, or remove connections; optional labels; per-endpoint Basic auth; **Test connection**; duplicate-URL warning.
+- **Core switcher** — pick a core; **Refresh cores** re-fetches `/admin/cores?action=STATUS`.
+- The last selected **core** is remembered per endpoint.
+
+Settings are stored in a **local SQLite database** on the machine running the app (not in the browser). On first load after an upgrade, existing `localStorage` data is migrated once into the database via `/api/presets/migrate-local`.
 
 ### Local database
 
@@ -123,7 +167,7 @@ npm rebuild better-sqlite3
 
 The database includes a **sqlite-vec** `embedding_chunks` virtual table (`float[384]`) as a stub for future semantic search; the app does not write embeddings yet.
 
-Schema definitions: [`src/lib/persistence/schema.ts`](src/lib/persistence/schema.ts) and [`src/lib/persistence/migrate-runner.mjs`](src/lib/persistence/migrate-runner.mjs).
+Tables: `solr_endpoints` (URLs, labels, encrypted auth, `last_core`), `query_builder_templates`, `app_settings` (active endpoint id). Schema definitions: [`src/lib/persistence/schema.ts`](src/lib/persistence/schema.ts) and [`src/lib/persistence/migrate-runner.mjs`](src/lib/persistence/migrate-runner.mjs).
 
 #### Browse the DB in Cursor
 
@@ -135,8 +179,6 @@ This repo recommends the **[SQLite Viewer](https://marketplace.visualstudio.com/
 
 If the file opens as gibberish text, close it and use the Command Palette (`Ctrl+Shift+P`) → **SQLite Viewer: Open Database** → pick `.data/solr-playground.db`.
 
-![Endpoint and core controls](docs/screenshots/header-connection.png)
-
 ## Query templates
 
 On the **Query builder** tab, **Save as template** stores the current parser, field matchers, search text, and edismax options for the active **endpoint** and **core**. Template names must be unique per endpoint+core pair (duplicate saves return an error).
@@ -144,18 +186,20 @@ On the **Query builder** tab, **Save as template** stores the current parser, fi
 **Load from source** (collapsible) offers two paths (template first by default):
 
 - **From query template** — pick a saved template scoped to the current endpoint and core; switching cores (e.g. `customers` → `products`) shows a different list.
-- **From Solr URL** — same reverse-import as before; field names are validated against the live schema before applying.
+- **From Solr URL** — reverse-import field matchers, search text, parser, and edismax settings; field names are validated against the live schema before applying.
 
 Templates live in the `query_builder_templates` table (migration v2). Manage or delete saved names from the save dialog.
 
 ## Compare tab
 
-The **Compare** tab (between Play and Analyze) runs two query setups side by side against the same core and endpoint:
+The **Compare** tab runs two query setups side by side against the same core and endpoint:
 
-1. **Source A** and **Source B** — each has **Load from source** (Solr URL or saved template), same as Query builder.
-2. **Search (shared)** — one search box; both plans use this text when you click **Compare queries**.
-3. **Top 10** results per side (compact `ResultDoc` list, expand/collapse).
-4. **Metrics** — deterministic comparison without AI: Solr QTime, wall-clock time, total hits, max/avg scores, overlap and Jaccard on top 10, rank displacement for shared docs, and neutral hints (e.g. which side was faster).
+1. **Source A** and **Source B** — each has **Load from source** (Solr URL or saved template), same as Query builder. Both must be loaded before comparing.
+2. **Search (shared)** — one search box; both plans use this text when you click **Compare queries** (Enter runs compare when ready).
+3. **Metrics summary** — table with Solr QTime, wall-clock time, total hits, max/avg scores; chips for overlap, Jaccard, only-in-A/B, avg rank shift, score ratio; neutral hint bullets.
+4. **Top 10** results per side (same expandable `ResultDoc` list as Play, including field analysis).
+
+The **Evaluate relevance (AI)** button appears after a comparison. When no API key is configured, it stays disabled and shows a placeholder pointing at `OPENAI_API_KEY` — no key is required for normal use.
 
 ### AI relevancy evaluation (optional)
 
@@ -167,7 +211,30 @@ Set on the machine running Next.js:
 | `COMPARE_AI_API_KEY` | Alternative key (takes precedence if set) |
 | `COMPARE_AI_MODEL` | Model id (default `gpt-4o-mini`) |
 
-`GET /api/compare/evaluate` reports whether a key is configured. **Evaluate relevance (AI)** sends trimmed top-10 snippets and returns a structured verdict (`a`, `b`, or `tie`) with reasons.
+`GET /api/compare/evaluate` reports whether a key is configured. **Evaluate relevance (AI)** sends trimmed top-10 snippets and returns a structured verdict (`a`, `b`, or `tie`) with confidence, reasons, per-side notes, and caveats.
+
+## Analyze tab
+
+Fetches schema from Solr admin APIs (fields, dynamic fields, field types, copyFields).
+
+- **Fields table** — name, type badge (click for analyzer chain popover), locale derived from type name, indexed/stored/docValues/multiValued flags.
+- **Dynamic rules** — nested expandable groups.
+- **CopyFields** — source → destination rules.
+- **Internal / system fields** — collapsible section.
+- **Reload** — re-fetch schema for the active core.
+
+## API routes
+
+Server routes under [`src/app/api/`](src/app/api/) (for contributors):
+
+| Route | Methods | Purpose |
+| ----- | ------- | ------- |
+| `/api/solr/[...path]` | GET, POST | Solr proxy; client sends `x-solr-base-url` and optional `x-solr-auth` (Basic) |
+| `/api/presets/connections` | GET, PUT | Load/save endpoint list + active endpoint id |
+| `/api/presets/templates` | GET, POST | List/create templates (`endpointId`, `core` query params on GET) |
+| `/api/presets/templates/[id]` | GET, DELETE | Fetch or delete a single template |
+| `/api/presets/migrate-local` | POST | One-time `localStorage` → SQLite migration |
+| `/api/compare/evaluate` | GET, POST | AI availability check + relevance evaluation |
 
 ## Regenerate seed JSON
 
@@ -184,6 +251,7 @@ Then follow [`solr/README.md`](solr/README.md) if you need a full re-index.
 | `npm run dev:stack` | Node launcher: find `docker`, Compose up Solr, then `next dev` |
 | `npm run stop:stack` | Node launcher: Compose down + kill port **3000** |
 | `npm run dev` | Next.js only (Solr must already be running) |
+| `npm run start` | Production server (after `npm run build`) |
 | `npm run db:migrate` | Create/update SQLite schema (WAL + sqlite-vec) |
 | `npm run seed:solr` | Rewrite `solr/data/*.json` |
 | `npm run build` | Production build |
@@ -191,19 +259,7 @@ Then follow [`solr/README.md`](solr/README.md) if you need a full re-index.
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test` | Vitest unit tests (`src/**/*.test.ts`) |
 | `npm run test:watch` | Vitest in watch mode |
-| `npm run screenshots` | Regenerate README preview PNGs (requires `dev:stack` + Chromium) |
-
-### Regenerating screenshots
-
-With Solr and the app running:
-
-```bash
-npm run dev:stack                    # separate terminal
-npx playwright install chromium      # once, after npm install
-npm run screenshots
-```
-
-Writes PNGs to [`docs/screenshots/`](docs/screenshots/).
+| `npm run screenshots` | Regenerate README preview PNGs (requires `dev:stack` + Chromium; see [Preview](#preview)) |
 
 ## License
 

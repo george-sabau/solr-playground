@@ -63,29 +63,73 @@ async function clickPlayTab(page) {
   await page.getByRole("tab", { name: "Play" }).click();
 }
 
+async function clickCompareTab(page) {
+  await page.getByRole("tab", { name: "Compare" }).click();
+  await page.getByRole("heading", { name: /Compare/i }).waitFor({
+    timeout: 15_000,
+  });
+}
+
 async function clickAnalyzeTab(page) {
   await page.getByRole("tab", { name: "Analyze" }).click();
 }
 
-async function captureBuilderScreenshot(page) {
-  await clickPlayTab(page);
+async function clickQueryBuilderTab(page) {
   await page.getByRole("tab", { name: "Query builder" }).click();
+}
+
+async function setupBuilderSearch(page) {
+  await clickPlayTab(page);
+  await clickQueryBuilderTab(page);
 
   await page.locator("#builder-search").fill("Par");
-  await page.getByRole("button", { name: "city", exact: true }).click();
 
-  const fieldCard = page.locator("li").filter({ hasText: "city" }).first();
-  await fieldCard.getByRole("button", { name: "Add matcher" }).click();
+  const cityChip = page.getByRole("button", { name: "city", exact: true });
+  if ((await cityChip.getAttribute("aria-pressed")) !== "true") {
+    await cityChip.click();
+  }
 
-  const matchSelects = fieldCard.getByRole("combobox");
-  await matchSelects.nth(1).click();
+  const fieldCard = page
+    .locator("li")
+    .filter({ has: page.locator("summary span.font-mono", { hasText: "city" }) })
+    .first();
+  await fieldCard.waitFor({ state: "visible", timeout: 15_000 });
+
+  const fieldDetails = fieldCard.locator("details").first();
+  if (!(await fieldDetails.evaluate((el) => el.open))) {
+    await fieldDetails.locator("summary").click();
+  }
+
+  const matchSelect = fieldCard.getByRole("combobox").first();
+  await matchSelect.click();
   await page.getByRole("option", { name: "Fuzzy" }).click();
 
-  await page
-    .getByRole("button", { name: "Run" })
-    .last()
-    .click();
-  await page.getByText(/\d+\s+hits/).waitFor({ timeout: 30_000 });
+  if (!(await page.getByText(/\d+\s+hits/).isVisible().catch(() => false))) {
+    await page.getByRole("button", { name: "Run" }).last().click();
+    await page.getByText(/\d+\s+hits/).waitFor({ timeout: 30_000 });
+  }
+}
+
+async function loadCompareSource(page, columnTitle, url) {
+  const column = page
+    .locator("div.flex-1.flex-col.rounded-lg.border")
+    .filter({
+      has: page.getByRole("heading", { name: columnTitle, exact: true, level: 3 }),
+    });
+
+  const details = column.locator("details").first();
+  if (!(await details.evaluate((el) => el.open))) {
+    await details.locator("summary").click();
+  }
+
+  await column.getByRole("button", { name: "From Solr URL" }).click();
+  await column.locator('input[placeholder*="select?q"]').fill(url);
+  await column.getByRole("button", { name: "Load" }).click();
+  await column.getByText(/Loaded:/).waitFor({ timeout: 15_000 });
+}
+
+async function captureBuilderScreenshot(page) {
+  await setupBuilderSearch(page);
 
   const section = page.locator("section").filter({ hasText: "Search customers" });
   await section.screenshot({
@@ -125,6 +169,62 @@ async function captureHeaderScreenshot(page) {
   });
 }
 
+async function captureCompareScreenshot(page) {
+  await clickCompareTab(page);
+
+  await loadCompareSource(
+    page,
+    "Source A",
+    "http://localhost:8983/solr/customers/select?q=city:Par&wt=json"
+  );
+  await loadCompareSource(
+    page,
+    "Source B",
+    "http://localhost:8983/solr/customers/select?q=first_name:Par&wt=json"
+  );
+
+  await page.locator("#compare-search").fill("Par");
+  await page.getByRole("button", { name: "Compare queries" }).click();
+  await page.getByText("Source A vs Source B").waitFor({ timeout: 30_000 });
+  await page.getByText(/\d+\s+hits/).first().waitFor({ timeout: 30_000 });
+  await page.waitForTimeout(500);
+
+  const section = page.locator("section").filter({ hasText: "Compare" }).first();
+  await section.screenshot({
+    path: path.join(OUT_DIR, "compare-overview.png"),
+  });
+}
+
+async function captureResultsExpandedScreenshot(page) {
+  const firstHit = page.locator("article").first();
+  await firstHit.getByRole("button").first().click();
+  await page.getByText("indexed", { exact: true }).first().waitFor({
+    timeout: 30_000,
+  });
+  await page.waitForTimeout(500);
+
+  const section = page.locator("section").filter({ hasText: "Search customers" });
+  await section.screenshot({
+    path: path.join(OUT_DIR, "play-results-expanded.png"),
+  });
+}
+
+async function captureLoadFromSourceScreenshot(page) {
+  await clickPlayTab(page);
+  await clickQueryBuilderTab(page);
+
+  const details = page.locator("details").filter({ hasText: "Load from source" }).first();
+  if (!(await details.evaluate((el) => el.open))) {
+    await details.locator("summary").click();
+  }
+  await details.getByRole("button", { name: "From query template" }).click();
+  await page.waitForTimeout(300);
+
+  await details.screenshot({
+    path: path.join(OUT_DIR, "load-from-source.png"),
+  });
+}
+
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
 
@@ -141,8 +241,11 @@ async function main() {
   await selectCore(page, "customers");
 
   await captureHeaderScreenshot(page);
+  await captureLoadFromSourceScreenshot(page);
   await captureBuilderScreenshot(page);
+  await captureResultsExpandedScreenshot(page);
   await captureClassicScreenshot(page);
+  await captureCompareScreenshot(page);
   await captureAnalyzeScreenshot(page);
 
   await browser.close();
