@@ -31,6 +31,24 @@ function listNodeCandidates() {
     candidates.push(process.env.NODE_EXE.trim());
   }
 
+  if (process.platform === "win32" && process.env.LOCALAPPDATA) {
+    candidates.push(
+      join(
+        process.env.LOCALAPPDATA,
+        "Programs",
+        "cursor",
+        "resources",
+        "app",
+        "resources",
+        "helpers",
+        "node.exe",
+      ),
+    );
+    candidates.push(
+      join(process.env.ProgramFiles || "C:\\Program Files", "nodejs", "node.exe"),
+    );
+  }
+
   if (process.platform === "win32") {
     const where = spawnSync("where.exe", ["node"], {
       encoding: "utf8",

@@ -18,6 +18,7 @@ export function loadProjectEnv(repoRoot) {
 export function buildNextDevEnv(nodeExe, repoRoot, extra = {}) {
   return envWithNodeFirst(nodeExe, {
     ...loadProjectEnv(repoRoot),
+    SOLR_PLAYGROUND_ROOT: repoRoot,
     ...extra,
   });
 }
