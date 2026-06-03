@@ -12,7 +12,10 @@ import { buildNextDevEnv } from "./lib/load-project-env.mjs";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..");
 
-const nodeExe = ensureBetterSqlite3ForNode(repoRoot, { label: "dev" });
+const nodeExe = ensureBetterSqlite3ForNode(repoRoot, {
+  label: "dev",
+  forceRebuild: true,
+});
 const nextBin = join(repoRoot, "node_modules", "next", "dist", "bin", "next");
 const dbPath = join(repoRoot, ".data", "solr-playground.db");
 

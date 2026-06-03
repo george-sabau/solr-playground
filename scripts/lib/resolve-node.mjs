@@ -50,9 +50,13 @@ function listNodeCandidates() {
   }
 
   if (process.platform === "win32") {
-    const where = spawnSync("where.exe", ["node"], {
+    const whereExe = join(
+      process.env.SystemRoot ?? "C:\\Windows",
+      "System32",
+      "where.exe",
+    );
+    const where = spawnSync(whereExe, ["node"], {
       encoding: "utf8",
-      shell: true,
     });
     if (where.status === 0) {
       for (const line of where.stdout.split(/\r?\n/)) {
@@ -125,12 +129,53 @@ export function envWithNodeFirst(nodeExe, baseEnv = process.env) {
  * @returns {boolean}
  */
 export function canLoadBetterSqlite3(nodeExe, repoRoot) {
-  const result = spawnSync(
-    nodeExe,
-    ["-e", "require('better-sqlite3');"],
-    { stdio: "pipe", cwd: repoRoot },
-  );
+  const script = [
+    "const Database = require('better-sqlite3');",
+    "const db = new Database(':memory:');",
+    "db.close();",
+  ].join("");
+  const result = spawnSync(nodeExe, ["-e", script], {
+    stdio: "pipe",
+    cwd: repoRoot,
+    env: envWithNodeFirst(nodeExe),
+  });
   return result.status === 0;
+}
+
+/**
+ * Locate npm-cli.js for the given Node binary (npm ships with Node, not the project).
+ * @param {string} nodeExe
+ * @returns {string}
+ */
+export function resolveNpmCli(nodeExe) {
+  const nodeDir = dirname(nodeExe);
+  const candidates = [
+    join(nodeDir, "node_modules", "npm", "bin", "npm-cli.js"),
+    join(nodeDir, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js"),
+  ];
+
+  if (process.platform === "win32") {
+    candidates.push(
+      join(
+        process.env.ProgramFiles || "C:\\Program Files",
+        "nodejs",
+        "node_modules",
+        "npm",
+        "bin",
+        "npm-cli.js",
+      ),
+    );
+  }
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    `[resolve-node] npm-cli.js not found for ${nodeExe}. Install Node/npm or run from a full Node install.`,
+  );
 }
 
 /**
@@ -139,24 +184,11 @@ export function canLoadBetterSqlite3(nodeExe, repoRoot) {
  * @returns {import('node:child_process').SpawnSyncReturns<Buffer>}
  */
 export function rebuildBetterSqlite3(nodeExe, repoRoot) {
-  const npmCliResult = spawnSync(
-    nodeExe,
-    ["-p", "require.resolve('npm/bin/npm-cli.js')"],
-    { encoding: "utf8", cwd: repoRoot },
-  );
+  const npmCli = resolveNpmCli(nodeExe);
 
-  if (npmCliResult.status === 0 && npmCliResult.stdout.trim()) {
-    return spawnSync(
-      nodeExe,
-      [npmCliResult.stdout.trim(), "rebuild", "better-sqlite3"],
-      { cwd: repoRoot, stdio: "inherit", env: envWithNodeFirst(nodeExe) },
-    );
-  }
-
-  return spawnSync("npm", ["rebuild", "better-sqlite3"], {
+  return spawnSync(nodeExe, [npmCli, "rebuild", "better-sqlite3"], {
     cwd: repoRoot,
     stdio: "inherit",
-    shell: true,
     env: envWithNodeFirst(nodeExe),
   });
 }
@@ -168,17 +200,25 @@ export function rebuildBetterSqlite3(nodeExe, repoRoot) {
  */
 export function ensureBetterSqlite3ForNode(repoRoot, options = {}) {
   const label = options.label ?? "native-modules";
+  const forceRebuild = options.forceRebuild === true;
   const nodeExe = resolveNodeExe(repoRoot);
   const version = nodeVersion(nodeExe) ?? "unknown";
 
-  if (canLoadBetterSqlite3(nodeExe, repoRoot)) {
+  if (!forceRebuild && canLoadBetterSqlite3(nodeExe, repoRoot)) {
     console.log(`[${label}] better-sqlite3 OK (Node ${version})`);
     return nodeExe;
   }
 
-  console.log(
-    `[${label}] Rebuilding better-sqlite3 for Node ${version} (${nodeExe})…`,
-  );
+  if (forceRebuild && canLoadBetterSqlite3(nodeExe, repoRoot)) {
+    console.log(
+      `[${label}] Rebuilding better-sqlite3 for Node ${version} (dev preflight)…`,
+    );
+  } else {
+    console.log(
+      `[${label}] Rebuilding better-sqlite3 for Node ${version} (${nodeExe})…`,
+    );
+  }
+
   const rebuild = rebuildBetterSqlite3(nodeExe, repoRoot);
 
   if (rebuild.status !== 0 || !canLoadBetterSqlite3(nodeExe, repoRoot)) {
@@ -186,13 +226,13 @@ export function ensureBetterSqlite3ForNode(repoRoot, options = {}) {
 [${label}] better-sqlite3 failed to load for Node ${version}.
 
 Fix:
-  • Use Node ${readTargetNodeMajor(repoRoot) ?? 22} (see .nvmrc): nvm use / fnm use
-  • npm ci
-  • Or set NODE_EXE to your Node ${readTargetNodeMajor(repoRoot) ?? 22} binary and run again
+  • npm run rebuild:native
+  • npm run setup
+  • Or set NODE_EXE to your Node ${readTargetNodeMajor(repoRoot) ?? 22} binary
 `);
     process.exit(1);
   }
 
-  console.log(`[${label}] better-sqlite3 rebuilt successfully`);
+  console.log(`[${label}] better-sqlite3 rebuilt successfully (Node ${version})`);
   return nodeExe;
 }

@@ -8,8 +8,8 @@ describe("formatDbError", () => {
         "The module was compiled against a different Node.js version using NODE_MODULE_VERSION 127."
       )
     );
-    expect(msg).toContain("npm rebuild better-sqlite3");
-    expect(msg).toContain("Node 22");
+    expect(msg).toContain("rebuild:native");
+    expect(msg).toContain("dev:stack");
   });
 
   it("passes through generic errors", () => {

@@ -1,0 +1,19 @@
+---
+description: Read project change history and past incident fixes before editing dev tooling
+alwaysApply: true
+---
+
+# Change history (read first)
+
+Before changing Node scripts, PostCSS, persistence, or env loading, read [`docs/CHANGE_HISTORY.md`](docs/CHANGE_HISTORY.md).
+
+## Quick reference
+
+| Problem | Check |
+|--------|--------|
+| `EBADENGINE` / sqlite ABI | `npm install` works (auto-relay); avoid plain `npm rebuild` → use `npm run rebuild:native`; restart `dev:stack` |
+| Tailwind won't resolve | Parent lockfile at `C:\Users\PC\`; see `postcss.config.mjs` + `next.config.ts` |
+| AI evaluate disabled | Save `.env.local`; verify `curl localhost:3000/api/compare/evaluate` |
+| Templates 500 / sqlite | `node scripts/ensure-native-modules.mjs`; restart dev with Node 22 |
+
+After fixing a recurring issue, append to `docs/CHANGE_HISTORY.md` (including **Agent mistakes** section).

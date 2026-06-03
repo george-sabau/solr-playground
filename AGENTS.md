@@ -6,6 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Local Solr + app (development)
 
+- **Node 22 required** (`.nvmrc`). `npm install` auto-relays to Node 22 when system npm is Node 24. Prefer `npm run setup` for clean installs. **Never plain `npm rebuild`** — use `npm run rebuild:native`. See [`docs/CHANGE_HISTORY.md`](docs/CHANGE_HISTORY.md).
 - **`npm run dev:stack`** (repo root): Node launcher (`scripts/dev-stack.mjs`) uses **`scripts/lib/find-docker.mjs`** (`docker --version`, `where.exe docker`, common Windows install dirs, **`DOCKER_EXE`**) then Compose (`solr/docker-compose.yml`, project dir `solr/`) detached, then **`next dev`**.
 - **`npm run stop:stack`**: Node launcher (`scripts/stop-stack.mjs`) runs **`docker compose … down`** and **`kill-port` on 3000**. Warn the user if they rely on another service on 3000.
 - Solr-only or manual flow: see [`solr/README.md`](solr/README.md).

@@ -19,7 +19,11 @@
     "test:regression": "node scripts/ensure-native-modules.mjs && vitest run src/lib/persistence src/lib/solr/endpoints.test.ts src/app/api/presets",
     "test:watch": "vitest",
     "db:migrate": "node scripts/db-migrate.mjs",
+    "preinstall": "node scripts/check-node-version.mjs",
     "postinstall": "node scripts/ensure-native-modules.mjs",
+    "setup": "node scripts/run-npm.mjs ci",
+    "install:deps": "node scripts/run-npm.mjs install",
+    "rebuild:native": "node scripts/run-npm.mjs rebuild better-sqlite3",
     "screenshots": "node scripts/capture-screenshots.mjs"
   },
   "dependencies": {

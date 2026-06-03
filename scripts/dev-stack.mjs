@@ -70,7 +70,10 @@ if (up.error || up.status !== 0) {
   process.exit(up.status ?? 1);
 }
 
-const nodeExe = ensureBetterSqlite3ForNode(repoRoot, { label: "dev:stack" });
+const nodeExe = ensureBetterSqlite3ForNode(repoRoot, {
+  label: "dev:stack",
+  forceRebuild: true,
+});
 const nextBin = join(repoRoot, "node_modules", "next", "dist", "bin", "next");
 const dbPath = join(repoRoot, ".data", "solr-playground.db");
 const next = spawnSync(nodeExe, [nextBin, "dev"], {

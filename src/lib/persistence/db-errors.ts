@@ -7,7 +7,7 @@ export function formatDbError(error: unknown): string {
   ) {
     return (
       "SQLite native module mismatch (Node version changed since npm install). " +
-      "Run: npm rebuild better-sqlite3 — or use Node 22 (see .nvmrc) and npm ci."
+      "Run: npm run rebuild:native — or npm run dev:stack (auto-rebuilds for Node 22)."
     );
   }
   return message || "Database error";
