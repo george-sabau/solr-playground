@@ -81,7 +81,6 @@ export function CompareSummary({
         responseA={responseA}
         responseB={responseB}
         aiAvailable={aiAvailable}
-        bothSourcesReady={bothSourcesReady}
       />
     </div>
   );
@@ -186,19 +185,18 @@ function CompareAiSummary({
   responseA,
   responseB,
   aiAvailable,
-  bothSourcesReady,
 }: {
   metrics: CompareMetricsResult;
   responseA: SelectResponse | null;
   responseB: SelectResponse | null;
   aiAvailable: boolean;
-  bothSourcesReady: boolean;
 }) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<AiCompareSummary | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
 
+  const compareResultsReady = !!responseA && !!responseB;
   const docsReady =
     (responseA?.response.docs.length ?? 0) > 0 &&
     (responseB?.response.docs.length ?? 0) > 0;
@@ -207,14 +205,14 @@ function CompareAiSummary({
     ? "AI evaluation in progress…"
     : !aiAvailable
       ? "Set GEMINI_API_KEY in .env.local on the server"
-      : !bothSourcesReady
-        ? "Load both Source A and Source B first"
+      : !compareResultsReady
+        ? "Run Compare queries first"
         : !docsReady
           ? "Both sides need at least one result document — use a search term that returns hits on A and B"
           : null;
 
   const handleAiEvaluate = async () => {
-    if (!bothSourcesReady || !responseA || !responseB) {
+    if (!compareResultsReady || !responseA || !responseB) {
       toast.error("Load both sources and run Compare queries first.");
       return;
     }
@@ -386,12 +384,9 @@ function CompareAiSummary({
 
         {aiError && <p className="text-[11px] text-destructive">{aiError}</p>}
 
-        {aiAvailable && !docsReady && !aiLoading && (
-          <p className="text-[11px] text-muted-foreground">
-            AI is configured, but both result lists need at least one document.
-            Run <strong className="text-foreground">Compare queries</strong> with a
-            term that returns hits on <strong className="text-foreground">both</strong>{" "}
-            Source A and Source B (check the hit counts in each column).
+        {aiAvailable && aiButtonDisabledReason && !aiLoading && (
+          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+            {aiButtonDisabledReason}
           </p>
         )}
 
