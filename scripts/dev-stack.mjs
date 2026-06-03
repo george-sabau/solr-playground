@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 import { dockerDaemonOk, findDockerExe } from "./lib/find-docker.mjs";
 import {
   ensureBetterSqlite3ForNode,
-  envWithNodeFirst,
 } from "./lib/resolve-node.mjs";
+import { buildNextDevEnv } from "./lib/load-project-env.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..");
@@ -76,8 +76,7 @@ const dbPath = join(repoRoot, ".data", "solr-playground.db");
 const next = spawnSync(nodeExe, [nextBin, "dev"], {
   stdio: "inherit",
   cwd: repoRoot,
-  env: envWithNodeFirst(nodeExe, {
-    ...process.env,
+  env: buildNextDevEnv(nodeExe, repoRoot, {
     DATABASE_PATH: process.env.DATABASE_PATH ?? dbPath,
   }),
 });
