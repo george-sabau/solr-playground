@@ -251,7 +251,7 @@ export function EndpointManager({
         <DialogHeader>
           <DialogTitle>Solr endpoints</DialogTitle>
           <DialogDescription>
-            Saved connections persist in this browser. Switch endpoints from the
+            Saved on this machine (local database). Switch endpoints from the
             header dropdown; cores reload automatically.
           </DialogDescription>
         </DialogHeader>

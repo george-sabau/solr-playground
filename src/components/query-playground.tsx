@@ -17,7 +17,7 @@ import {
 } from "@/lib/query/types";
 import { runSelect } from "@/lib/solr-client";
 import { useActiveBaseUrl, useSolrStore } from "@/lib/stores/solr-store";
-import { ResultDoc } from "@/components/result-doc";
+import { QueryResultsList } from "@/components/query-results-list";
 import { QueryBuilderPanel } from "@/components/query-builder-panel";
 import { QueryClassicPanel } from "@/components/query-classic-panel";
 import { cn } from "@/lib/utils";
@@ -59,25 +59,10 @@ export function QueryPlayground() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [expandAllMode, setExpandAllMode] = useState(false);
-  const [collapsedInExpandAll, setCollapsedInExpandAll] = useState<
-    Set<string>
-  >(() => new Set());
-  const [openWhenNormal, setOpenWhenNormal] = useState<Set<string>>(
-    () => new Set()
-  );
-
-  const resetExpansion = useCallback(() => {
-    setExpandAllMode(false);
-    setCollapsedInExpandAll(new Set());
-    setOpenWhenNormal(new Set());
-  }, []);
-
   const runSearch = useCallback(
     async (plan: SearchPlan, startIdx: number) => {
       if (!core) {
         setResponse(null);
-        resetExpansion();
         return;
       }
       setLoading(true);
@@ -90,16 +75,14 @@ export function QueryPlayground() {
           extra: plan.extra,
         });
         setResponse(res);
-        resetExpansion();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Search failed");
         setResponse(null);
-        resetExpansion();
       } finally {
         setLoading(false);
       }
     },
-    [core, resetExpansion]
+    [core]
   );
 
   useEffect(() => {
@@ -131,52 +114,6 @@ export function QueryPlayground() {
     (docs.length > 0
       ? docs.reduce((m, d) => (typeof d.score === "number" ? Math.max(m, d.score) : m), 0)
       : undefined);
-
-  const docKeys = useMemo(
-    () =>
-      docs.map(
-        (doc, i) =>
-          `${start + i}:${doc.id != null ? String(doc.id) : `noid-${i}`}`
-      ),
-    [docs, start]
-  );
-
-  const isDocExpanded = useCallback(
-    (docKey: string) =>
-      expandAllMode ? !collapsedInExpandAll.has(docKey) : openWhenNormal.has(docKey),
-    [collapsedInExpandAll, expandAllMode, openWhenNormal]
-  );
-
-  const toggleDoc = useCallback(
-    (docKey: string) => {
-      if (expandAllMode) {
-        setCollapsedInExpandAll((prev) => {
-          const next = new Set(prev);
-          if (next.has(docKey)) next.delete(docKey);
-          else next.add(docKey);
-          return next;
-        });
-      } else {
-        setOpenWhenNormal((prev) => {
-          const next = new Set(prev);
-          if (next.has(docKey)) next.delete(docKey);
-          else next.add(docKey);
-          return next;
-        });
-      }
-    },
-    [expandAllMode]
-  );
-
-  const expandAllResults = useCallback(() => {
-    setExpandAllMode(true);
-    setCollapsedInExpandAll(new Set());
-  }, []);
-
-  const collapseAllResults = useCallback(() => {
-    setExpandAllMode(false);
-    setOpenWhenNormal(new Set());
-  }, []);
 
   const hasNext = start + PAGE_SIZE < numFound;
   const hasPrev = start > 0;
@@ -253,6 +190,7 @@ export function QueryPlayground() {
           />
         ) : (
           <QueryBuilderPanel
+            endpointId={activeEndpointId}
             core={core}
             baseUrl={baseUrl}
             parser={parserMode}
@@ -316,39 +254,13 @@ export function QueryPlayground() {
           </div>
         )}
 
-        <div className="flex flex-col gap-2">
-          {docs.length > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              aria-pressed={expandAllMode}
-              onClick={() =>
-                expandAllMode ? collapseAllResults() : expandAllResults()
-              }
-            >
-              {expandAllMode ? "Collapse all" : "Expand all"}
-            </Button>
-          )}
-          {docs.map((doc, i) => {
-            const docKey = docKeys[i]!;
-            return (
-              <ResultDoc
-                key={docKey}
-                rank={start + i + 1}
-                doc={doc}
-                maxScore={maxScore}
-                expanded={isDocExpanded(docKey)}
-                onToggle={() => toggleDoc(docKey)}
-              />
-            );
-          })}
-          {!loading && docs.length === 0 && response && (
-            <div className="rounded-md border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
-              No documents matched.
-            </div>
-          )}
-        </div>
+        <QueryResultsList
+          docs={docs}
+          start={start}
+          maxScore={maxScore}
+          loading={loading}
+          searched={!!response}
+        />
 
         {(hasPrev || hasNext) && (
           <div className="flex items-center justify-end gap-2">

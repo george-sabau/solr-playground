@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { ChevronRight, Download, Loader2, Play, Plus, Trash2, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronRight, Loader2, Play, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,11 +18,9 @@ import {
   isMatcherActive,
   matchModeLabel,
 } from "@/lib/query/compile";
-import {
-  ImportBuilderError,
-  importBuilderFromSolrUrl,
-} from "@/lib/query/import";
 import { getSearchableFields } from "@/lib/query/fields";
+import { LoadFromSourcePanel } from "@/components/load-from-source-panel";
+import { SaveTemplateDialog } from "@/components/save-template-dialog";
 import type {
   BuilderFieldConfig,
   BuilderState,
@@ -246,57 +244,76 @@ function FieldMatchersCard({
     });
   };
 
+  const matcherModes = field.matchers
+    .map((m) => matchModeLabel(m.mode))
+    .join(" · ");
+  const collapsedSummary =
+    field.matchers.length === 1
+      ? matcherModes
+      : `${field.matchers.length} matchers · ${matcherModes}`;
+
   return (
-    <li className="space-y-2 rounded-lg border border-border/80 bg-muted/10 p-2.5">
-      <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate font-mono text-xs font-medium">
-          {field.field}
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="size-7 text-muted-foreground hover:text-destructive"
-          aria-label={`Remove ${field.field}`}
-          onClick={onRemoveField}
-        >
-          <Trash2 className="size-3.5" />
-        </Button>
-      </div>
-      <div className="space-y-1.5">
-        {field.matchers.map((m) => (
-          <MatcherRow
-            key={m.id}
-            matcher={m}
-            field={field}
-            searchText={searchText}
-            edismaxMode={edismaxMode}
-            canRemove={field.matchers.length > 1}
-            onChange={(next) => updateMatcher(m.id, next)}
-            onRemove={() => removeMatcher(m.id)}
-          />
-        ))}
-      </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 text-[11px] text-muted-foreground"
-        onClick={addMatcher}
-      >
-        <Plus className="size-3" />
-        Add matcher
-      </Button>
-      {field.matchers.length > 1 && (
-        <p className="text-[10px] text-muted-foreground">
-          Matchers on this field are combined with OR.
-        </p>
-      )}
+    <li>
+      <details className="group rounded-lg border border-border/80 bg-muted/10">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2 hover:bg-muted/20 [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90 group-open:text-[var(--solr-accent)]" />
+          <span className="shrink-0 font-mono text-xs font-medium">
+            {field.field}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground">
+            {collapsedSummary}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+            aria-label={`Remove ${field.field}`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onRemoveField();
+            }}
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        </summary>
+        <div className="space-y-1.5 border-t border-border/80 px-2.5 pb-2.5 pt-2">
+          {field.matchers.map((m) => (
+            <MatcherRow
+              key={m.id}
+              matcher={m}
+              field={field}
+              searchText={searchText}
+              edismaxMode={edismaxMode}
+              canRemove={field.matchers.length > 1}
+              onChange={(next) => updateMatcher(m.id, next)}
+              onRemove={() => removeMatcher(m.id)}
+            />
+          ))}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 text-[11px] text-muted-foreground"
+            onClick={addMatcher}
+          >
+            <Plus className="size-3" />
+            Add matcher
+          </Button>
+          {field.matchers.length > 1 && (
+            <p className="text-[10px] text-muted-foreground">
+              Matchers on this field are combined with OR.
+            </p>
+          )}
+        </div>
+      </details>
     </li>
   );
 }
 
 export function QueryBuilderPanel({
+  endpointId,
   core,
   baseUrl,
   parser,
@@ -312,6 +329,7 @@ export function QueryBuilderPanel({
   onRun,
   loading,
 }: {
+  endpointId: string;
   core: string;
   baseUrl: string;
   parser: QueryParserMode;
@@ -328,6 +346,7 @@ export function QueryBuilderPanel({
   loading: boolean;
 }) {
   const schema = useSchema();
+  const [templateListTick, setTemplateListTick] = useState(0);
   const fields = useMemo(
     () => getSearchableFields(schema.schema),
     [schema.schema]
@@ -340,25 +359,6 @@ export function QueryBuilderPanel({
 
   const plan = compileBuilderSearch(state, parser);
   const showEdismax = parser === "edismax" || parser === "dismax";
-
-  const handleImport = () => {
-    onImportErrorChange(null);
-    onImportWarningsChange([]);
-    try {
-      const result = importBuilderFromSolrUrl(importUrl);
-      onChange(result.state);
-      onParserChange(result.parser);
-      onImportWarningsChange(result.warnings);
-    } catch (err) {
-      onImportErrorChange(
-        err instanceof ImportBuilderError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "Import failed."
-      );
-    }
-  };
 
   const toggleField = (name: string) => {
     if (selectedNames.has(name)) {
@@ -414,62 +414,33 @@ export function QueryBuilderPanel({
         </div>
       </div>
 
-      <details className="group rounded-lg border border-dashed border-border/80 bg-muted/10">
-        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-muted/20">
-          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90 group-open:text-[var(--solr-accent)]" />
-          Import from source URL
-        </summary>
-        <div className="space-y-2 border-t border-border/80 px-3 pb-3 pt-2">
-          <p className="text-[11px] text-muted-foreground">
-            Paste a Solr select URL (or query string) to reverse-engineer field
-            matchers, search text, parser, and edismax settings.
-          </p>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              id="builder-import-url"
-              value={importUrl}
-              onChange={(e) => {
-                onImportUrlChange(e.target.value);
-                if (importError) onImportErrorChange(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleImport();
-                }
-              }}
-              placeholder="http://localhost:8983/solr/core/select?q=..."
-              spellCheck={false}
-              className="font-mono text-xs"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="shrink-0"
-              disabled={!importUrl.trim()}
-              onClick={handleImport}
-            >
-              <Download className="size-3.5" />
-              Import
-            </Button>
-          </div>
-          {importError && (
-            <p className="text-[11px] text-destructive">{importError}</p>
-          )}
-          {importWarnings.map((w) => (
-            <p
-              key={w}
-              className="text-[11px] text-amber-700 dark:text-amber-400"
-            >
-              {w}
-            </p>
-          ))}
-        </div>
-      </details>
+      <LoadFromSourcePanel
+        key={templateListTick}
+        endpointId={endpointId}
+        core={core}
+        importUrl={importUrl}
+        onImportUrlChange={onImportUrlChange}
+        importError={importError}
+        onImportErrorChange={onImportErrorChange}
+        importWarnings={importWarnings}
+        onImportWarningsChange={onImportWarningsChange}
+        onChange={onChange}
+        onParserChange={onParserChange}
+        searchableFields={fields}
+      />
 
       <div className="space-y-2 rounded-lg border border-border/80 bg-muted/15 p-3">
-        <Label className="text-xs">Query options</Label>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Label className="text-xs">Query options</Label>
+          <SaveTemplateDialog
+            endpointId={endpointId}
+            core={core}
+            baseUrl={baseUrl}
+            parser={parser}
+            builderState={state}
+            onTemplatesChanged={() => setTemplateListTick((n) => n + 1)}
+          />
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="grid gap-1">
             <Label className="text-[10px]">Combine fields</Label>

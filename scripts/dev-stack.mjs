@@ -67,10 +67,14 @@ if (up.error || up.status !== 0) {
 }
 
 const nextBin = join(repoRoot, "node_modules", "next", "dist", "bin", "next");
+const dbPath = join(repoRoot, ".data", "solr-playground.db");
 const next = spawnSync(process.execPath, [nextBin, "dev"], {
   stdio: "inherit",
   cwd: repoRoot,
-  env: process.env,
+  env: {
+    ...process.env,
+    DATABASE_PATH: process.env.DATABASE_PATH ?? dbPath,
+  },
 });
 
 process.exit(next.status ?? 0);
