@@ -36,7 +36,7 @@ describe("compare AI config", () => {
   it("uses COMPARE_AI_MODEL or default gemini model", () => {
     process.env.GEMINI_API_KEY = "key";
     delete process.env.COMPARE_AI_MODEL;
-    expect(resolveCompareAiModel()).toBe("gemini-2.0-flash");
+    expect(resolveCompareAiModel()).toBe("gemini-2.5-flash");
     process.env.COMPARE_AI_MODEL = "gemini-1.5-pro";
     expect(resolveCompareAiConfig()?.model).toBe("gemini-1.5-pro");
   });

@@ -203,6 +203,16 @@ function CompareAiSummary({
     (responseA?.response.docs.length ?? 0) > 0 &&
     (responseB?.response.docs.length ?? 0) > 0;
 
+  const aiButtonDisabledReason = aiLoading
+    ? "AI evaluation in progress…"
+    : !aiAvailable
+      ? "Set GEMINI_API_KEY in .env.local on the server"
+      : !bothSourcesReady
+        ? "Load both Source A and Source B first"
+        : !docsReady
+          ? "Both sides need at least one result document — use a search term that returns hits on A and B"
+          : null;
+
   const handleAiEvaluate = async () => {
     if (!bothSourcesReady || !responseA || !responseB) {
       toast.error("Load both sources and run Compare queries first.");
@@ -267,13 +277,9 @@ function CompareAiSummary({
       variant="outline"
       size="sm"
       className="h-8 text-xs"
-      disabled={!bothSourcesReady || !aiAvailable || aiLoading || !docsReady}
+      disabled={!!aiButtonDisabledReason}
       onClick={() => void handleAiEvaluate()}
-      title={
-        aiAvailable
-          ? "Compare full result lists with Gemini"
-          : "Set GEMINI_API_KEY in .env.local on the server"
-      }
+      title={aiButtonDisabledReason ?? "Compare full result lists with Gemini"}
     >
       {aiLoading ? (
         <Loader2 className="size-3.5 animate-spin" />
@@ -380,7 +386,16 @@ function CompareAiSummary({
 
         {aiError && <p className="text-[11px] text-destructive">{aiError}</p>}
 
-        {aiAvailable && !aiResult && !aiError && !aiLoading && (
+        {aiAvailable && !docsReady && !aiLoading && (
+          <p className="text-[11px] text-muted-foreground">
+            AI is configured, but both result lists need at least one document.
+            Run <strong className="text-foreground">Compare queries</strong> with a
+            term that returns hits on <strong className="text-foreground">both</strong>{" "}
+            Source A and Source B (check the hit counts in each column).
+          </p>
+        )}
+
+        {aiAvailable && docsReady && !aiResult && !aiError && !aiLoading && (
           <p className="text-[11px] text-muted-foreground">
             Click <strong className="text-foreground">Evaluate relevance (AI)</strong>{" "}
             to send both full Solr result lists and the comparison metrics to Gemini
