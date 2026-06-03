@@ -254,7 +254,6 @@ export function ComparePanel() {
           responseA={responseA}
           responseB={responseB}
           aiAvailable={aiAvailable}
-          bothSourcesReady={bothSourcesReady}
         />
 
         <div className="grid gap-4 lg:grid-cols-2">

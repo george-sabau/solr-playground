@@ -1,5 +1,4 @@
 import type {
-  BuilderFieldConfig,
   BuilderState,
   FieldMatcher,
   QueryParserMode,
@@ -28,7 +27,8 @@ export function stripBuilderStateIds(state: BuilderState): BuilderState {
       field: f.field,
       minLength: f.minLength,
       matchers: f.matchers.map((m) => {
-        const { id: _id, ...rest } = m;
+        const { id, ...rest } = m;
+        void id;
         return { ...rest, id: "" } as FieldMatcher;
       }),
     })),
@@ -48,7 +48,8 @@ export function cloneBuilderStateForApply(state: BuilderState): BuilderState {
         config.minLength = minLength;
       }
       config.matchers = f.matchers.map((m) => {
-        const { id: _id, ...rest } = m;
+        const { id, ...rest } = m;
+        void id;
         return createMatcher(rest.mode, rest);
       });
       return config;

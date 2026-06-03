@@ -50,13 +50,11 @@ export function CompareSummary({
   responseA,
   responseB,
   aiAvailable,
-  bothSourcesReady = false,
 }: {
   metrics: CompareMetricsResult | null;
   responseA: SelectResponse | null;
   responseB: SelectResponse | null;
   aiAvailable: boolean;
-  bothSourcesReady?: boolean;
 }) {
   const aiResetKey = metrics
     ? `${metrics.searchTerm}|${metrics.sideA.qSummary}|${metrics.sideB.qSummary}`

@@ -9,7 +9,7 @@ import type { ConnectionState } from "@/lib/persistence/types";
 import {
   clearInMemoryDbEnv,
   resetTestPersistence,
-  useInMemoryDb,
+  enableInMemoryDb,
 } from "./test-helpers";
 
 function sampleState(overrides?: Partial<ConnectionState>): ConnectionState {
@@ -31,7 +31,7 @@ function sampleState(overrides?: Partial<ConnectionState>): ConnectionState {
 describe("Solr endpoint persistence", () => {
   beforeEach(() => {
     resetTestPersistence();
-    useInMemoryDb();
+    enableInMemoryDb();
   });
 
   afterEach(() => {

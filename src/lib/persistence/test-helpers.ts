@@ -6,7 +6,7 @@ export function resetTestPersistence(): void {
   resetDbForTests();
 }
 
-export function useInMemoryDb(): void {
+export function enableInMemoryDb(): void {
   process.env.DATABASE_PATH = ":memory:";
 }
 

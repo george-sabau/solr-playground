@@ -4,7 +4,6 @@ import {
   DEFAULT_SOLR_BASE_URL,
   getActiveEndpoint,
   normalizeBaseUrl,
-  type SolrAuth,
   type SolrEndpoint,
   type SolrEndpointInput,
 } from "@/lib/solr/endpoints";

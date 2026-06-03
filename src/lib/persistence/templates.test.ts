@@ -15,7 +15,7 @@ import {
 import {
   clearInMemoryDbEnv,
   resetTestPersistence,
-  useInMemoryDb,
+  enableInMemoryDb,
 } from "./test-helpers";
 
 function sampleBuilder() {
@@ -30,7 +30,7 @@ function sampleBuilder() {
 describe("query template persistence", () => {
   beforeEach(() => {
     resetTestPersistence();
-    useInMemoryDb();
+    enableInMemoryDb();
   });
 
   afterEach(() => {

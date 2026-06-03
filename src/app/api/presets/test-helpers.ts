@@ -11,12 +11,12 @@ import {
 import {
   clearInMemoryDbEnv,
   resetTestPersistence,
-  useInMemoryDb,
+  enableInMemoryDb,
 } from "@/lib/persistence/test-helpers";
 
 export function setupPresetsApiTests(): void {
   resetTestPersistence();
-  useInMemoryDb();
+  enableInMemoryDb();
 }
 
 export function teardownPresetsApiTests(): void {

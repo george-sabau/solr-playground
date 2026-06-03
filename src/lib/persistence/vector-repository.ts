@@ -8,15 +8,17 @@ export interface VectorRepository {
 }
 
 export class StubVectorRepository implements VectorRepository {
-  upsertChunk(_chunk: EmbeddingChunk): void {
-    // no-op until embedding pipeline exists
+  upsertChunk(chunk: EmbeddingChunk): void {
+    void chunk;
   }
 
-  deleteChunk(_chunkId: string): void {
-    // no-op
+  deleteChunk(chunkId: string): void {
+    void chunkId;
   }
 
-  search(_query: Float32Array, _limit = 10): EmbeddingChunk[] {
+  search(query: Float32Array, limit = 10): EmbeddingChunk[] {
+    void query;
+    void limit;
     return [];
   }
 }
