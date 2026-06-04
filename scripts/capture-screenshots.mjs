@@ -110,7 +110,120 @@ async function setupBuilderSearch(page) {
   }
 }
 
-async function loadCompareSource(page, columnTitle, url) {
+const COMPARE_TEMPLATE_A = "customers from paris search";
+const COMPARE_TEMPLATE_B = "customers from paris search2";
+const COMPARE_SEARCH = "Pari design";
+const COMPARE_ENDPOINT_ID = "default-local";
+const COMPARE_CORE = "customers";
+
+function compareMatcher(mode, boost = 1) {
+  return {
+    id: "",
+    mode,
+    boost,
+    fuzzyDistance: 2,
+    required: false,
+    prohibited: false,
+  };
+}
+
+function compareTemplatePayloadA() {
+  return {
+    version: 1,
+    parser: "lucene",
+    builder: {
+      searchText: "",
+      combineWith: "OR",
+      edismax: { mm: "", min: "", tie: "", qfOverride: "" },
+      fields: [
+        {
+          id: "",
+          field: "city",
+          matchers: [compareMatcher("fuzzy"), compareMatcher("fuzzy")],
+        },
+        {
+          id: "",
+          field: "country",
+          matchers: [compareMatcher("term"), compareMatcher("wildcard")],
+        },
+        {
+          id: "",
+          field: "state",
+          matchers: [compareMatcher("wildcard"), compareMatcher("term")],
+        },
+      ],
+    },
+  };
+}
+
+function compareTemplatePayloadB() {
+  return {
+    version: 1,
+    parser: "lucene",
+    builder: {
+      searchText: "",
+      combineWith: "OR",
+      edismax: { mm: "", min: "", tie: "", qfOverride: "" },
+      fields: [
+        {
+          id: "",
+          field: "city",
+          matchers: [compareMatcher("fuzzy"), compareMatcher("fuzzy", 10)],
+        },
+        {
+          id: "",
+          field: "country",
+          matchers: [compareMatcher("term"), compareMatcher("wildcard")],
+        },
+        {
+          id: "",
+          field: "state",
+          matchers: [compareMatcher("wildcard"), compareMatcher("term")],
+        },
+        {
+          id: "",
+          field: "interests",
+          matchers: [compareMatcher("term"), compareMatcher("wildcard")],
+        },
+      ],
+    },
+  };
+}
+
+async function ensureCompareTemplates(request) {
+  const listRes = await request.get(
+    `${APP_URL}/api/presets/templates?endpointId=${COMPARE_ENDPOINT_ID}&core=${COMPARE_CORE}`
+  );
+  if (!listRes.ok()) {
+    console.warn("Could not list templates — compare capture may fail");
+    return;
+  }
+  const list = await listRes.json();
+  const names = new Set(list.map((t) => t.name));
+
+  const seeds = [
+    [COMPARE_TEMPLATE_A, compareTemplatePayloadA()],
+    [COMPARE_TEMPLATE_B, compareTemplatePayloadB()],
+  ];
+
+  for (const [name, payload] of seeds) {
+    if (names.has(name)) continue;
+    const res = await request.post(`${APP_URL}/api/presets/templates`, {
+      data: {
+        endpointId: COMPARE_ENDPOINT_ID,
+        core: COMPARE_CORE,
+        name,
+        parser: "lucene",
+        payload,
+      },
+    });
+    if (!res.ok()) {
+      console.warn(`Failed to seed template "${name}" (${res.status()})`);
+    }
+  }
+}
+
+async function loadCompareTemplate(page, columnTitle, templateName) {
   const column = page
     .locator("div.flex-1.flex-col.rounded-lg.border")
     .filter({
@@ -122,8 +235,13 @@ async function loadCompareSource(page, columnTitle, url) {
     await details.locator("summary").click();
   }
 
-  await column.getByRole("button", { name: "From Solr URL" }).click();
-  await column.locator('input[placeholder*="select?q"]').fill(url);
+  await column.getByRole("button", { name: "From query template" }).click();
+  await page
+    .getByText("Loading templates…")
+    .waitFor({ state: "hidden", timeout: 15_000 })
+    .catch(() => {});
+  await column.getByRole("combobox").click();
+  await page.getByRole("option", { name: templateName, exact: true }).click();
   await column.getByRole("button", { name: "Load" }).click();
   await column.getByText(/Loaded:/).waitFor({ timeout: 15_000 });
 }
@@ -169,31 +287,37 @@ async function captureHeaderScreenshot(page) {
   });
 }
 
-async function runCompareWithHits(page) {
+async function runCompareScenario(page) {
   await clickCompareTab(page);
+  await ensureCompareTemplates(page.request);
 
-  await loadCompareSource(
-    page,
-    "Source A",
-    "http://localhost:8983/solr/customers/select?q=city:Paris&wt=json"
-  );
-  await loadCompareSource(
-    page,
-    "Source B",
-    "http://localhost:8983/solr/customers/select?q=city:Paris~1&wt=json"
-  );
+  await loadCompareTemplate(page, "Source A", COMPARE_TEMPLATE_A);
+  await loadCompareTemplate(page, "Source B", COMPARE_TEMPLATE_B);
 
-  await page.locator("#compare-search").fill("Paris");
+  await page.locator("#compare-search").fill(COMPARE_SEARCH);
   await page.getByRole("button", { name: "Compare queries" }).click();
   await page.getByRole("heading", { name: "Comparison summary" }).waitFor({
     timeout: 30_000,
   });
   await page.getByText(/\d+\s+hits/).first().waitFor({ timeout: 30_000 });
+
+  const aiDetails = page
+    .locator("details")
+    .filter({ has: page.getByRole("heading", { name: "AI summary" }) })
+    .first();
+  if (!(await aiDetails.evaluate((el) => el.open))) {
+    await aiDetails.locator("summary").click();
+  }
+  await page
+    .getByRole("button", { name: "Evaluate relevance (AI)" })
+    .waitFor({ state: "visible", timeout: 15_000 });
+
   await page.waitForTimeout(500);
 }
 
 async function captureCompareScreenshot(page) {
-  await runCompareWithHits(page);
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await runCompareScenario(page);
 
   const section = page.locator("section").filter({ hasText: "Compare" }).first();
   await section.screenshot({
@@ -202,7 +326,7 @@ async function captureCompareScreenshot(page) {
 }
 
 async function captureCompareAiScreenshot(page) {
-  await runCompareWithHits(page);
+  await runCompareScenario(page);
 
   const evaluateRes = await page.request.get(`${APP_URL}/api/compare/evaluate`);
   const { available } = await evaluateRes.json();

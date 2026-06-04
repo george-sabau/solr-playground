@@ -27,12 +27,12 @@ Visual sidecar for Solr query and analysis — build searches, compare two setup
 | Play (builder) | Play (classic) | Compare | Analyze |
 | :---: | :---: | :---: | :---: |
 | ![Query builder](docs/screenshots/play-query-builder.png) | ![Classic syntax](docs/screenshots/play-classic.png) | ![Compare tab](docs/screenshots/compare-overview.png) | ![Schema analyze tab](docs/screenshots/analyze-schema.png) |
-| Field matchers, fuzzy mode, Run + hits | Raw `q`, parser, request preview | A/B sources, comparison metrics, result columns | Field types, flags, dynamic rules, copyFields |
+| Field matchers, fuzzy mode, Run + hits | Raw `q`, parser, request preview | Templates **customers from paris search** / **search2**, shared term `Pari design`, comparison + AI button | Field types, flags, dynamic rules, copyFields |
 
 | Compare (AI evaluation) | Results (expanded) | Load from source | Connection header |
 | :---: | :---: | :---: | :---: |
 | ![Compare with Gemini AI verdict](docs/screenshots/compare-ai-summary.png) | ![Expanded hit with indexed tokens](docs/screenshots/play-results-expanded.png) | ![Template picker and Solr URL import](docs/screenshots/load-from-source.png) | ![Endpoint and core controls](docs/screenshots/header-connection.png) |
-| Enabled **Evaluate relevance (AI)** verdict + reasons | Score bar, field groups, indexed analysis | Template picker + Solr URL import | Endpoint/core switcher, refresh cores |
+| After **Evaluate relevance (AI)** on the same template pair | Score bar, field groups, indexed analysis | Template picker + Solr URL import | Endpoint/core switcher, refresh cores |
 
 **Regenerate screenshots** (Playwright; needs Solr + app on :3000):
 
@@ -42,7 +42,7 @@ npx playwright install chromium      # once, after npm install
 npm run screenshots
 ```
 
-Output goes to [`docs/screenshots/`](docs/screenshots/) (8 PNGs). The **compare-ai-summary** capture calls Gemini and requires a saved `GEMINI_API_KEY` in `.env.local`; if the key is missing, that PNG is skipped with a console warning. Override the app URL with `APP_URL=http://localhost:3000` if needed. See [`scripts/capture-screenshots.mjs`](scripts/capture-screenshots.mjs) for the capture flow.
+Output goes to [`docs/screenshots/`](docs/screenshots/) (8 PNGs). The **Compare** captures load templates **customers from paris search** (Source A) and **customers from paris search2** (Source B), run a shared search for **`Pari design`**, and show the comparison summary plus **Evaluate relevance (AI)**. Templates are created automatically if missing. **compare-ai-summary** calls Gemini and needs a saved `GEMINI_API_KEY` in `.env.local`. Override the app URL with `APP_URL=http://localhost:3000` if needed. See [`scripts/capture-screenshots.mjs`](scripts/capture-screenshots.mjs) for the capture flow.
 
 ## Continuous integration
 
@@ -202,7 +202,7 @@ Templates live in the `query_builder_templates` table (migration v2). Manage or 
 
 The **Compare** tab runs two query setups side by side against the same core and endpoint:
 
-1. **Source A** and **Source B** — each has **Load from source** (Solr URL or saved template), same as Query builder. Both must be loaded before comparing.
+1. **Source A** and **Source B** — each has **Load from source** (Solr URL or saved template), same as Query builder. Both must be loaded before comparing. The README preview uses templates **customers from paris search** (A) and **customers from paris search2** (B) with shared search **`Pari design`**.
 2. **Search (shared)** — one search box; both plans use this text when you click **Compare queries** (Enter runs compare when ready).
 3. **Comparison summary** (collapsible) — table with Solr QTime, wall-clock time, total hits, max/avg scores; chips for overlap, Jaccard, only-in-A/B, avg rank shift, score ratio; neutral hint bullets.
 4. **Top 10** results per side (same expandable `ResultDoc` list as Play, including field analysis).
@@ -220,7 +220,7 @@ Copy [`.env.example`](.env.example) to `.env.local`, set your key from [Google A
 | `COMPARE_AI_API_KEY` | Alternative key name (fallback if `GEMINI_API_KEY` is unset) |
 | `COMPARE_AI_MODEL` | Gemini model id (default `gemini-2.5-flash`) |
 
-`GET /api/compare/evaluate` reports whether a key is configured (`{ "available": true }`). The **Evaluate relevance (AI)** button also requires **both Source A and Source B to return at least one hit** after **Compare queries** — use a shared search term that matches on both sides (e.g. `Paris` on the `customers` core with city/state matchers).
+`GET /api/compare/evaluate` reports whether a key is configured (`{ "available": true }`). The **Evaluate relevance (AI)** button also requires **both Source A and Source B to return at least one hit** after **Compare queries** — use a shared search term that matches on both sides (e.g. **`Pari design`** with Paris/design field templates on the `customers` core).
 
 **Evaluate relevance (AI)** calls `POST /api/compare/evaluate` with both response bodies and metrics. The **AI summary** panel shows the Gemini verdict (`a`, `b`, or `tie`), confidence, summary, reasons, metrics interpretation, per-side notes, and caveats.
 
