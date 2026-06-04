@@ -19,6 +19,8 @@ describe("validateBuilderAgainstSchema", () => {
         fields: [createFieldConfig("name")],
         combineWith: "OR",
         edismax: { mm: "", min: "", tie: "", qfOverride: "" },
+        filterQuery: null,
+        boostQuery: null,
       },
       "lucene",
       schema
@@ -35,6 +37,25 @@ describe("validateBuilderAgainstSchema", () => {
           fields: [createFieldConfig("unknown_field")],
           combineWith: "OR",
           edismax: { mm: "", min: "", tie: "", qfOverride: "" },
+          filterQuery: null,
+          boostQuery: null,
+        },
+        "lucene",
+        schema
+      )
+    ).toThrow(TemplateValidationError);
+  });
+
+  it("rejects filter query field missing from schema", () => {
+    expect(() =>
+      validateBuilderAgainstSchema(
+        {
+          searchText: "",
+          fields: [],
+          combineWith: "OR",
+          edismax: { mm: "", min: "", tie: "", qfOverride: "" },
+          filterQuery: { field: "missing", value: "true" },
+          boostQuery: null,
         },
         "lucene",
         schema

@@ -18,6 +18,10 @@ import {
   isMatcherActive,
   matchModeLabel,
 } from "@/lib/query/compile";
+import {
+  filterValueOptionsForField,
+  isBooleanField,
+} from "@/lib/query/field-value";
 import { getSearchableFields } from "@/lib/query/fields";
 import { LoadFromSourcePanel } from "@/components/load-from-source-panel";
 import { SaveTemplateDialog } from "@/components/save-template-dialog";
@@ -31,6 +35,7 @@ import type {
 import {
   createFieldConfig,
   createMatcher,
+  DEFAULT_BOOST_QUERY_BOOST,
   DEFAULT_MIN_QUERY_LENGTH,
 } from "@/lib/query/types";
 import { useSchema } from "@/lib/schema/context";
@@ -357,8 +362,23 @@ export function QueryBuilderPanel({
     [state.fields]
   );
 
-  const plan = compileBuilderSearch(state, parser);
+  const fieldTypes = useMemo(() => {
+    const map: Record<string, string | undefined> = {};
+    for (const f of fields) {
+      map[f.name] = f.type;
+    }
+    return map;
+  }, [fields]);
+
+  const plan = compileBuilderSearch(state, parser, { fieldTypes });
   const showEdismax = parser === "edismax" || parser === "dismax";
+  const fieldNames = useMemo(() => fields.map((f) => f.name), [fields]);
+  const filterBool = state.filterQuery
+    ? isBooleanField(schema.schema, state.filterQuery.field)
+    : false;
+  const filterValueOptions = state.filterQuery
+    ? filterValueOptionsForField(schema.schema, state.filterQuery.field)
+    : null;
 
   const toggleField = (name: string) => {
     if (selectedNames.has(name)) {
@@ -441,7 +461,7 @@ export function QueryBuilderPanel({
             onTemplatesChanged={() => setTemplateListTick((n) => n + 1)}
           />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1">
             <Label className="text-[10px]">Combine fields</Label>
             <Select
@@ -461,6 +481,260 @@ export function QueryBuilderPanel({
                 <SelectItem value="AND">AND (match all fields)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="space-y-2 rounded-md border border-border/60 bg-background/60 p-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-[10px] font-medium">Filter query (fq)</Label>
+              {state.filterQuery && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-1.5 text-[10px]"
+                  onClick={() => onChange({ ...state, filterQuery: null })}
+                >
+                  <X className="size-3" />
+                  Clear
+                </Button>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Restrict results (e.g. active customers only).
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-1">
+                <Label className="text-[10px]">Field</Label>
+                <Select
+                  value={state.filterQuery?.field ?? ""}
+                  onValueChange={(field) => {
+                    if (!field) return;
+                    onChange({
+                      ...state,
+                      filterQuery: {
+                        field,
+                        value: isBooleanField(schema.schema, field)
+                          ? "true"
+                          : state.filterQuery?.value ?? "",
+                      },
+                    });
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select field…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fieldNames.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-[10px]">Value</Label>
+                {filterBool && filterValueOptions ? (
+                  <Select
+                    value={state.filterQuery?.value ?? "true"}
+                    disabled={!state.filterQuery?.field}
+                    onValueChange={(value) => {
+                      if (!value || !state.filterQuery?.field) return;
+                      onChange({
+                        ...state,
+                        filterQuery: {
+                          field: state.filterQuery.field,
+                          value,
+                        },
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filterValueOptions.map((v) => (
+                        <SelectItem key={v} value={v}>
+                          {v}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={state.filterQuery?.value ?? ""}
+                    disabled={!state.filterQuery?.field}
+                    onChange={(e) =>
+                      onChange({
+                        ...state,
+                        filterQuery: {
+                          field: state.filterQuery!.field,
+                          value: e.target.value,
+                        },
+                      })
+                    }
+                    placeholder="true, design@example.com…"
+                    className="h-8 text-xs"
+                    spellCheck={false}
+                  />
+                )}
+              </div>
+            </div>
+            {!state.filterQuery && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 w-full text-xs"
+                disabled={fieldNames.length === 0}
+                onClick={() =>
+                  onChange({
+                    ...state,
+                    filterQuery: { field: fieldNames[0] ?? "", value: "" },
+                  })
+                }
+              >
+                Add filter
+              </Button>
+            )}
+          </div>
+
+          <div className="space-y-2 rounded-md border border-border/60 bg-background/60 p-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-[10px] font-medium">Boost query (bq)</Label>
+              {state.boostQuery && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-1.5 text-[10px]"
+                  onClick={() => onChange({ ...state, boostQuery: null })}
+                >
+                  <X className="size-3" />
+                  Clear
+                </Button>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Boost matching docs (e.g. interests:design^10).
+            </p>
+            {state.boostQuery ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-1 sm:col-span-2">
+                  <Label className="text-[10px]">Field</Label>
+                  <Select
+                    value={state.boostQuery.field}
+                    onValueChange={(field) => {
+                      if (!field || !state.boostQuery) return;
+                      onChange({
+                        ...state,
+                        boostQuery: { ...state.boostQuery, field },
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fieldNames.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-[10px]">Match</Label>
+                  <Select
+                    value={state.boostQuery.mode}
+                    onValueChange={(v) =>
+                      onChange({
+                        ...state,
+                        boostQuery: {
+                          ...state.boostQuery!,
+                          mode: v as MatchMode,
+                        },
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MATCH_MODES.map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {matchModeLabel(m)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-[10px]">Boost</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={state.boostQuery.boost}
+                    onChange={(e) =>
+                      onChange({
+                        ...state,
+                        boostQuery: {
+                          ...state.boostQuery!,
+                          boost: Math.max(
+                            1,
+                            Number(e.target.value) || DEFAULT_BOOST_QUERY_BOOST
+                          ),
+                        },
+                      })
+                    }
+                    className="h-8 font-mono text-xs"
+                  />
+                </div>
+                <div className="grid gap-1 sm:col-span-2">
+                  <Label className="text-[10px]">Value</Label>
+                  <Input
+                    value={state.boostQuery.value}
+                    onChange={(e) =>
+                      onChange({
+                        ...state,
+                        boostQuery: {
+                          ...state.boostQuery!,
+                          value: e.target.value,
+                        },
+                      })
+                    }
+                    placeholder="design"
+                    className="h-8 text-xs"
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 w-full text-xs"
+                disabled={fieldNames.length === 0}
+                onClick={() =>
+                  onChange({
+                    ...state,
+                    boostQuery: {
+                      field: fieldNames[0] ?? "",
+                      mode: "term",
+                      value: "",
+                      boost: DEFAULT_BOOST_QUERY_BOOST,
+                    },
+                  })
+                }
+              >
+                Add boost
+              </Button>
+            )}
           </div>
         </div>
       </div>

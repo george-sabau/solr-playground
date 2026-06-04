@@ -12,6 +12,8 @@ const emptyBuilder: BuilderState = {
   fields: [],
   combineWith: "OR",
   edismax: { mm: "", min: "", tie: "", qfOverride: "" },
+  filterQuery: null,
+  boostQuery: null,
 };
 
 const plan: SearchPlan = {

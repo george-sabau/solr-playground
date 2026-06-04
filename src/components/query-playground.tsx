@@ -8,6 +8,7 @@ import {
   compileBuilderSearch,
   compileClassicSearch,
 } from "@/lib/query/compile";
+import { getSearchableFields } from "@/lib/query/fields";
 import {
   DEFAULT_BUILDER_STATE,
   DEFAULT_EDISMAX,
@@ -32,7 +33,7 @@ export function QueryPlayground() {
   const baseUrl = useActiveBaseUrl();
   const schema = useSchema();
 
-  const [playTab, setPlayTab] = useState<PlayQueryMode>("classic");
+  const [playTab, setPlayTab] = useState<PlayQueryMode>("builder");
   const [parserMode, setParserMode] = useState<QueryParserMode>("lucene");
   const [classicState, setClassicState] = useState({
     q: DEFAULT_QUERY,
@@ -97,8 +98,22 @@ export function QueryPlayground() {
     setCommittedPlan(plan);
   };
 
+  const searchableFields = useMemo(
+    () => getSearchableFields(schema.schema),
+    [schema.schema]
+  );
+  const builderFieldTypes = useMemo(() => {
+    const map: Record<string, string | undefined> = {};
+    for (const f of searchableFields) {
+      map[f.name] = f.type;
+    }
+    return map;
+  }, [searchableFields]);
+
   const handleRunBuilder = () => {
-    const plan = compileBuilderSearch(builderState, parserMode);
+    const plan = compileBuilderSearch(builderState, parserMode, {
+      fieldTypes: builderFieldTypes,
+    });
     setStart(0);
     setCommittedPlan(plan);
   };
@@ -139,7 +154,7 @@ export function QueryPlayground() {
           </span>
         </h2>
         <p className="text-xs text-muted-foreground">
-          Classic Lucene syntax or a visual field builder — same{" "}
+          Visual query builder (default) or classic Lucene syntax — same{" "}
           <code className="font-mono">/select</code> endpoint, parser selectable
           per run.
         </p>
@@ -153,8 +168,8 @@ export function QueryPlayground() {
         >
           {(
             [
-              ["classic", "Classic syntax"],
               ["builder", "Query builder"],
+              ["classic", "Classic syntax"],
             ] as const
           ).map(([id, label]) => (
             <button

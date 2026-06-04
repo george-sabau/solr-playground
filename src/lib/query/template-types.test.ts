@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildTemplatePayload,
   cloneBuilderStateForApply,
+  deserializeTemplatePayload,
+  serializeTemplatePayload,
   stripBuilderStateIds,
 } from "@/lib/query/template-types";
 import {
@@ -48,5 +50,24 @@ describe("template payload helpers", () => {
     expect(payload.parser).toBe("edismax");
     expect(payload.sourceUrl).toBe("http://localhost/solr/select");
     expect(payload.builder.searchText).toBe("x");
+  });
+
+  it("round-trips filter and boost query in payload", () => {
+    const state = {
+      ...DEFAULT_BUILDER_STATE,
+      filterQuery: { field: "is_active", value: "true" },
+      boostQuery: {
+        field: "interests",
+        mode: "term" as const,
+        value: "design",
+        boost: 10,
+      },
+    };
+    const payload = buildTemplatePayload("lucene", state);
+    const restored = deserializeTemplatePayload(
+      serializeTemplatePayload(payload)
+    );
+    expect(restored.builder.filterQuery).toEqual(state.filterQuery);
+    expect(restored.builder.boostQuery).toEqual(state.boostQuery);
   });
 });

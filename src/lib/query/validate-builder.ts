@@ -25,12 +25,20 @@ export function validateBuilderAgainstSchema(
 ): BuilderValidationResult {
   const schemaNames = new Set(searchableFields.map((f) => f.name));
   const usedFields = builder.fields.map((f) => f.field).filter(Boolean);
-  const missingFields = usedFields.filter((name) => !schemaNames.has(name));
+  const optionFields: string[] = [];
+  if (builder.filterQuery?.field.trim()) {
+    optionFields.push(builder.filterQuery.field.trim());
+  }
+  if (builder.boostQuery?.field.trim()) {
+    optionFields.push(builder.boostQuery.field.trim());
+  }
+  const allReferenced = [...usedFields, ...optionFields];
+  const missingFields = allReferenced.filter((name) => !schemaNames.has(name));
 
   if (missingFields.length > 0) {
     throw new TemplateValidationError(
-      `Cannot load: field(s) not in schema: ${missingFields.join(", ")}`,
-      missingFields
+      `Cannot load: field(s) not in schema: ${[...new Set(missingFields)].join(", ")}`,
+      [...new Set(missingFields)]
     );
   }
 

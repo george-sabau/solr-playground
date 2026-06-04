@@ -12,7 +12,7 @@ The app is a single page at `/` with three top-level tabs: **Play**, **Compare**
 
 | Tab | Sub-areas | Highlights |
 | --- | --------- | ---------- |
-| **Play** | Classic syntax (default) · Query builder | Lucene / edismax / dismax parsers; dual **request preview** (app proxy + upstream Solr URL); 20-row pagination; expandable hits with **live indexed-token analysis** via `/analysis/field` |
+| **Play** | Query builder (default) · Classic syntax | Lucene / edismax / dismax parsers; optional **filter query** (`fq`) and **boost query** (`bq`); dual **request preview** (app proxy + upstream Solr URL); 20-row pagination; expandable hits with **live indexed-token analysis** via `/analysis/field` |
 | **Compare** | Source A · Source B | Load from Solr URL or saved template; shared search term; top-10 side-by-side results; collapsible **Comparison summary** (deterministic metrics); optional **AI summary** via Gemini (`GEMINI_API_KEY` in `.env.local`) |
 | **Analyze** | Schema panel | Static fields, dynamic rules, copyFields, internal fields; field-type popover with analyzer chain; Reload |
 
@@ -113,16 +113,17 @@ Default Solr base URL in the UI: `http://localhost:8983/solr`.
 
 ## Play tab
 
-**Classic syntax** is the default sub-tab; switch to **Query builder** for a visual field matcher UI.
+**Query builder** is the default sub-tab; switch to **Classic syntax** for raw Lucene `q` strings.
 
 ### Query builder
 
 - **Search** — one prompt applied to every selected field.
 - **Load from source** — import a saved template or reverse-engineer a Solr select URL (schema-validated).
-- **Field chips** — toggle indexed fields; configure matchers per field (term, phrase, exact, wildcard, prefix, fuzzy), numeric boost, min length, required (+) / prohibited (−); multiple matchers on one field are OR’d; combine fields with AND/OR.
+- **Query options** — combine fields with AND/OR; optional **Filter query** (`fq`) to restrict results (e.g. `is_active:true`, with a true/false dropdown for boolean fields); optional **Boost query** (`bq`) to raise scores for a field match (e.g. `interests:design^10`).
+- **Field chips** — toggle indexed fields; configure matchers per field (term, phrase, exact, wildcard, prefix, fuzzy), numeric boost, min length, required (+) / prohibited (−); multiple matchers on one field are OR’d.
 - **Parser** — lucene, edismax, or dismax; edismax exposes mm, min, tie, and qf (auto from selected fields or manual override).
-- **Save as template** — persist the current setup for the active endpoint + core (see [Query templates](#query-templates)).
-- **Request preview** — shows both the app proxy URL and the upstream Solr URL before you run.
+- **Save as template** — persist matchers, search text, edismax options, and filter/boost settings for the active endpoint + core (see [Query templates](#query-templates)).
+- **Request preview** — shows both the app proxy URL and the upstream Solr URL (including `fq` / `bq` when set) before you run.
 
 ### Classic syntax
 
@@ -189,12 +190,12 @@ If the file opens as gibberish text, close it and use the Command Palette (`Ctrl
 
 ## Query templates
 
-On the **Query builder** tab, **Save as template** stores the current parser, field matchers, search text, and edismax options for the active **endpoint** and **core**. Template names must be unique per endpoint+core pair (duplicate saves return an error).
+On the **Query builder** tab, **Save as template** stores the current parser, field matchers, search text, edismax options, and optional filter/boost queries for the active **endpoint** and **core**. Template names must be unique per endpoint+core pair (duplicate saves return an error).
 
 **Load from source** (collapsible) offers two paths (template first by default):
 
 - **From query template** — pick a saved template scoped to the current endpoint and core; switching cores (e.g. `customers` → `products`) shows a different list.
-- **From Solr URL** — reverse-import field matchers, search text, parser, and edismax settings; field names are validated against the live schema before applying.
+- **From Solr URL** — reverse-import field matchers, search text, parser, edismax settings, and a single `fq` / `bq` when present; field names are validated against the live schema before applying.
 
 Templates live in the `query_builder_templates` table (migration v2). Manage or delete saved names from the save dialog.
 

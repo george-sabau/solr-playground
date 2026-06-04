@@ -1,11 +1,14 @@
 import type {
+  BoostQueryConfig,
   BuilderFieldConfig,
   BuilderState,
   ClauseOperator,
+  FilterQueryConfig,
   MatchMode,
   QueryParserMode,
 } from "@/lib/query/types";
 import {
+  DEFAULT_BOOST_QUERY_BOOST,
   DEFAULT_EDISMAX,
   DEFAULT_FUZZY_DISTANCE,
   DEFAULT_MATCHER_BOOST,
@@ -364,6 +367,60 @@ function buildFieldConfigs(
   });
 }
 
+function parseFilterOrBoostParam(
+  raw: string,
+  kind: "filter" | "boost"
+): FilterQueryConfig | BoostQueryConfig | null {
+  try {
+    const clause = parseFieldClause(raw.trim());
+    if (kind === "filter") {
+      return { field: clause.field, value: clause.value };
+    }
+    return {
+      field: clause.field,
+      mode: clause.mode,
+      value: clause.value,
+      boost:
+        clause.boost > 0 ? clause.boost : DEFAULT_BOOST_QUERY_BOOST,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function importFqBq(
+  params: URLSearchParams,
+  warnings: string[]
+): Pick<BuilderState, "filterQuery" | "boostQuery"> {
+  const fqRaw = params.get("fq");
+  const bqRaw = params.get("bq");
+  let filterQuery: FilterQueryConfig | null = null;
+  let boostQuery: BoostQueryConfig | null = null;
+
+  if (fqRaw) {
+    filterQuery = parseFilterOrBoostParam(fqRaw, "filter") as FilterQueryConfig | null;
+    if (!filterQuery) {
+      warnings.push("Could not parse fq into filter query — set it manually.");
+    }
+  }
+  if (bqRaw) {
+    boostQuery = parseFilterOrBoostParam(bqRaw, "boost") as BoostQueryConfig | null;
+    if (!boostQuery) {
+      warnings.push("Could not parse bq into boost query — set it manually.");
+    }
+  }
+  return { filterQuery, boostQuery };
+}
+
+function mergeFqBq(state: BuilderState, params: URLSearchParams, warnings: string[]) {
+  const { filterQuery, boostQuery } = importFqBq(params, warnings);
+  return {
+    ...state,
+    filterQuery: filterQuery ?? state.filterQuery ?? null,
+    boostQuery: boostQuery ?? state.boostQuery ?? null,
+  };
+}
+
 function importFromEdismax(
   q: string,
   params: URLSearchParams,
@@ -383,22 +440,34 @@ function importFromEdismax(
 
   if (looksLikeFieldQuery(q)) {
     const parsed = parseFieldQuery(q);
-    return {
-      searchText: parsed.searchText,
-      combineWith: parsed.combineWith,
-      fields: buildFieldConfigs(parsed.fieldGroups),
-      edismax,
-    };
+    return mergeFqBq(
+      {
+        searchText: parsed.searchText,
+        combineWith: parsed.combineWith,
+        fields: buildFieldConfigs(parsed.fieldGroups),
+        edismax,
+        filterQuery: null,
+        boostQuery: null,
+      },
+      params,
+      warnings
+    );
   }
 
   if (!qf.trim()) {
     warnings.push("No qf parameter — imported search text only.");
-    return {
-      searchText: q.trim(),
-      combineWith: "OR",
-      fields: [],
-      edismax,
-    };
+    return mergeFqBq(
+      {
+        searchText: q.trim(),
+        combineWith: "OR",
+        fields: [],
+        edismax,
+        filterQuery: null,
+        boostQuery: null,
+      },
+      params,
+      warnings
+    );
   }
 
   const qfFields = parseQf(qf);
@@ -410,22 +479,34 @@ function importFromEdismax(
     };
   });
 
-  return {
-    searchText: q.trim(),
-    combineWith: "OR",
-    fields,
-    edismax,
-  };
+  return mergeFqBq(
+    {
+      searchText: q.trim(),
+      combineWith: "OR",
+      fields,
+      edismax,
+      filterQuery: null,
+      boostQuery: null,
+    },
+    params,
+    warnings
+  );
 }
 
-function importFromLucene(q: string): BuilderState {
+function importFromLucene(q: string, params: URLSearchParams, warnings: string[]): BuilderState {
   const parsed = parseFieldQuery(q);
-  return {
-    searchText: parsed.searchText,
-    combineWith: parsed.combineWith,
-    fields: buildFieldConfigs(parsed.fieldGroups),
-    edismax: { ...DEFAULT_EDISMAX },
-  };
+  return mergeFqBq(
+    {
+      searchText: parsed.searchText,
+      combineWith: parsed.combineWith,
+      fields: buildFieldConfigs(parsed.fieldGroups),
+      edismax: { ...DEFAULT_EDISMAX },
+      filterQuery: null,
+      boostQuery: null,
+    },
+    params,
+    warnings
+  );
 }
 
 /** Reverse-engineer builder state from a Solr select URL or query string. */
@@ -442,7 +523,7 @@ export function importBuilderFromSolrUrl(input: string): ImportBuilderResult {
   const state =
     parser === "edismax" || parser === "dismax"
       ? importFromEdismax(q, params, warnings)
-      : importFromLucene(q);
+      : importFromLucene(q, params, warnings);
 
   return { parser, state, warnings };
 }

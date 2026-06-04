@@ -22,6 +22,8 @@ export function stripBuilderStateIds(state: BuilderState): BuilderState {
     searchText: state.searchText,
     combineWith: state.combineWith,
     edismax: { ...state.edismax },
+    filterQuery: state.filterQuery ? { ...state.filterQuery } : null,
+    boostQuery: state.boostQuery ? { ...state.boostQuery } : null,
     fields: state.fields.map((f) => ({
       id: "",
       field: f.field,
@@ -40,6 +42,8 @@ export function cloneBuilderStateForApply(state: BuilderState): BuilderState {
     searchText: state.searchText,
     combineWith: state.combineWith,
     edismax: { ...state.edismax },
+    filterQuery: state.filterQuery ? { ...state.filterQuery } : null,
+    boostQuery: state.boostQuery ? { ...state.boostQuery } : null,
     fields: state.fields.map((f) => {
       const fieldName = f.field;
       const minLength = f.minLength;
@@ -99,6 +103,8 @@ export function deserializeTemplatePayload(json: string): QueryTemplatePayload {
       combineWith: p.builder.combineWith ?? "OR",
       edismax: { ...DEFAULT_EDISMAX, ...p.builder.edismax },
       fields: Array.isArray(p.builder.fields) ? p.builder.fields : [],
+      filterQuery: p.builder.filterQuery ?? null,
+      boostQuery: p.builder.boostQuery ?? null,
     },
     sourceUrl: p.sourceUrl,
   };

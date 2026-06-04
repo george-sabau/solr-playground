@@ -44,11 +44,28 @@ export interface EdismaxSettings {
   qfOverride: string;
 }
 
+export interface FilterQueryConfig {
+  field: string;
+  /** "true" | "false" for booleans; user text for others */
+  value: string;
+}
+
+export interface BoostQueryConfig {
+  field: string;
+  mode: MatchMode;
+  value: string;
+  boost: number;
+}
+
+export const DEFAULT_BOOST_QUERY_BOOST = 10;
+
 export interface BuilderState {
   searchText: string;
   fields: BuilderFieldConfig[];
   combineWith: ClauseOperator;
   edismax: EdismaxSettings;
+  filterQuery: FilterQueryConfig | null;
+  boostQuery: BoostQueryConfig | null;
 }
 
 export interface ClassicQueryState {
@@ -75,6 +92,8 @@ export const DEFAULT_BUILDER_STATE: BuilderState = {
   fields: [],
   combineWith: "OR",
   edismax: { ...DEFAULT_EDISMAX },
+  filterQuery: null,
+  boostQuery: null,
 };
 
 function newId(prefix: string): string {

@@ -1,9 +1,11 @@
 import type {
+  BoostQueryConfig,
   BuilderFieldConfig,
   BuilderState,
   ClassicQueryState,
   EdismaxSettings,
   FieldMatcher,
+  FilterQueryConfig,
   MatchMode,
   QueryParserMode,
   SearchPlan,
@@ -37,7 +39,7 @@ export function effectiveBoost(boost: number | undefined): number {
   return boost;
 }
 
-function compileMatcherExpr(
+export function compileMatcherExpr(
   fieldName: string,
   matcher: FieldMatcher,
   searchText: string
@@ -149,6 +151,66 @@ function buildEdismaxExtra(
   return extra;
 }
 
+export function compileFilterToFq(
+  config: FilterQueryConfig,
+  fieldType?: string
+): string | null {
+  const field = config.field.trim();
+  const value = config.value.trim();
+  if (!field || !value) return null;
+
+  const escapedField = escapeLuceneTerm(field);
+  if (fieldType === "boolean") {
+    const boolVal = value.toLowerCase() === "true" ? "true" : "false";
+    return `${escapedField}:${boolVal}`;
+  }
+  if (/\s/.test(value)) {
+    return `${escapedField}:"${escapeQuoted(value)}"`;
+  }
+  return `${escapedField}:${escapeLuceneTerm(value)}`;
+}
+
+export function compileBoostToBq(config: BoostQueryConfig): string | null {
+  const field = config.field.trim();
+  const value = config.value.trim();
+  if (!field || !value) return null;
+
+  const matcher: FieldMatcher = {
+    id: "",
+    mode: config.mode,
+    boost: config.boost,
+    fuzzyDistance: DEFAULT_FUZZY_DISTANCE,
+    required: false,
+    prohibited: false,
+  };
+  return compileMatcherExpr(field, matcher, value);
+}
+
+function appendFqBqSummarySuffix(summary: string, extra: Record<string, string>): string {
+  const parts = [summary];
+  if (extra.fq) parts.push(`fq=${extra.fq}`);
+  if (extra.bq) parts.push(`bq=${extra.bq}`);
+  return parts.length > 1 ? parts.join(" · ") : summary;
+}
+
+function applyFqBqToExtra(
+  extra: Record<string, string>,
+  state: BuilderState,
+  fieldTypes?: Record<string, string | undefined>
+): void {
+  if (state.filterQuery) {
+    const fq = compileFilterToFq(
+      state.filterQuery,
+      fieldTypes?.[state.filterQuery.field.trim()]
+    );
+    if (fq) extra.fq = fq;
+  }
+  if (state.boostQuery) {
+    const bq = compileBoostToBq(state.boostQuery);
+    if (bq) extra.bq = bq;
+  }
+}
+
 function qfFromFields(fields: BuilderFieldConfig[]): string {
   const seen = new Map<string, number>();
   for (const f of fields) {
@@ -167,7 +229,8 @@ function qfFromFields(fields: BuilderFieldConfig[]): string {
 
 export function compileBuilderSearch(
   state: BuilderState,
-  parser: QueryParserMode
+  parser: QueryParserMode,
+  options?: { fieldTypes?: Record<string, string | undefined> }
 ): SearchPlan {
   const qFromFields = compileFieldsToQ(state.fields, state.searchText, {
     combineWith: state.combineWith,
@@ -182,17 +245,24 @@ export function compileBuilderSearch(
       state.edismax,
       qfFromFields(state.fields)
     );
-    const summary =
+    applyFqBqToExtra(extra, state, options?.fieldTypes);
+    const baseSummary =
       text && state.fields.length > 0
         ? `"${text}" → ${state.fields.map((f) => f.field).join(", ")}`
         : q;
-    return { q, extra, summary };
+    return {
+      q,
+      extra,
+      summary: appendFqBqSummarySuffix(baseSummary, extra),
+    };
   }
 
+  const extra = { defType: "lucene" };
+  applyFqBqToExtra(extra, state, options?.fieldTypes);
   return {
     q: qFromFields,
-    extra: { defType: "lucene" },
-    summary: qFromFields,
+    extra,
+    summary: appendFqBqSummarySuffix(qFromFields, extra),
   };
 }
 
