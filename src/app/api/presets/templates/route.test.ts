@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { GET, POST } from "@/app/api/presets/templates/route";
-import { GET as GET_BY_ID, DELETE } from "@/app/api/presets/templates/[id]/route";
+import {
+  GET as GET_BY_ID,
+  PUT,
+  DELETE,
+} from "@/app/api/presets/templates/[id]/route";
 import { getSqliteRepository } from "@/lib/persistence";
 import {
   readJson,
@@ -206,6 +210,56 @@ describe("GET /api/presets/templates/[id]", () => {
     expect(await readJson<{ error: string }>(res)).toMatchObject({
       error: "Not found",
     });
+  });
+});
+
+describe("PUT /api/presets/templates/[id]", () => {
+  beforeEach(setupPresetsApiTests);
+  afterEach(teardownPresetsApiTests);
+
+  it("updates parser and payload without changing name", async () => {
+    const repo = getSqliteRepository();
+    const id = repo.createQueryTemplate({
+      endpointId: ENDPOINT,
+      core: CORE,
+      name: "Updatable",
+      parser: "lucene",
+      payload: sampleTemplatePayload(),
+    });
+
+    const nextPayload = sampleTemplatePayload("edismax");
+    const res = await PUT(
+      new Request(`http://localhost/api/presets/templates/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parser: "edismax", payload: nextPayload }),
+      }),
+      { params: Promise.resolve({ id }) }
+    );
+
+    expect(res.status).toBe(200);
+    const body = await readJson<{ id: string; name: string }>(res);
+    expect(body.name).toBe("Updatable");
+
+    const stored = repo.getQueryTemplate(id);
+    expect(stored?.parser).toBe("edismax");
+    expect(stored?.name).toBe("Updatable");
+  });
+
+  it("returns 404 for missing id", async () => {
+    const res = await PUT(
+      new Request("http://localhost/api/presets/templates/missing", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parser: "lucene",
+          payload: sampleTemplatePayload(),
+        }),
+      }),
+      { params: Promise.resolve({ id: "missing" }) }
+    );
+
+    expect(res.status).toBe(404);
   });
 });
 

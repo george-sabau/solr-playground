@@ -47,6 +47,8 @@ export function LoadFromSourcePanel({
   onParserChange,
   searchableFields,
   onLoaded,
+  onTemplateLoaded,
+  onTemplateCleared,
 }: {
   endpointId: string;
   core: string;
@@ -61,6 +63,10 @@ export function LoadFromSourcePanel({
   searchableFields: SchemaField[];
   /** Compare columns: one atomic parent update. Play tab: omit to use onChange/onParserChange. */
   onLoaded?: (result: LoadFromSourceResult) => void;
+  /** Play tab: set when a template is fully loaded into the builder. */
+  onTemplateLoaded?: (ref: { id: string; name: string }) => void;
+  /** Play tab: clear loaded-template context (e.g. after Solr URL import). */
+  onTemplateCleared?: () => void;
 }) {
   const [sourceKind, setSourceKind] = useState<LoadSourceKind>("template");
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
@@ -177,12 +183,16 @@ export function LoadFromSourcePanel({
     }
     try {
       const parsed = importBuilderFromSolrUrl(importUrl);
-      commitLoad(
-        truncateLabel(importUrl),
-        parsed.parser,
-        parsed.state,
-        parsed.warnings
-      );
+      if (
+        commitLoad(
+          truncateLabel(importUrl),
+          parsed.parser,
+          parsed.state,
+          parsed.warnings
+        )
+      ) {
+        onTemplateCleared?.();
+      }
     } catch (err) {
       onImportWarningsChange([]);
       onImportErrorChange(
@@ -211,7 +221,11 @@ export function LoadFromSourcePanel({
         );
         return;
       }
-      commitLoad(record.name, record.parser, record.payload.builder);
+      if (
+        commitLoad(record.name, record.parser, record.payload.builder)
+      ) {
+        onTemplateLoaded?.({ id: record.id, name: record.name });
+      }
     } catch (err) {
       onImportErrorChange(
         err instanceof Error ? err.message : "Failed to load template."

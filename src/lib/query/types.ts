@@ -45,12 +45,14 @@ export interface EdismaxSettings {
 }
 
 export interface FilterQueryConfig {
+  id: string;
   field: string;
   /** "true" | "false" for booleans; user text for others */
   value: string;
 }
 
 export interface BoostQueryConfig {
+  id: string;
   field: string;
   mode: MatchMode;
   value: string;
@@ -64,8 +66,8 @@ export interface BuilderState {
   fields: BuilderFieldConfig[];
   combineWith: ClauseOperator;
   edismax: EdismaxSettings;
-  filterQuery: FilterQueryConfig | null;
-  boostQuery: BoostQueryConfig | null;
+  filterQueries: FilterQueryConfig[];
+  boostQueries: BoostQueryConfig[];
 }
 
 export interface ClassicQueryState {
@@ -76,7 +78,10 @@ export interface ClassicQueryState {
 
 export interface SearchPlan {
   q: string;
+  /** Scalar select params: defType, mm, qf, tie, min, … */
   extra: Record<string, string>;
+  fq: string[];
+  bq: string[];
   summary: string;
 }
 
@@ -92,8 +97,8 @@ export const DEFAULT_BUILDER_STATE: BuilderState = {
   fields: [],
   combineWith: "OR",
   edismax: { ...DEFAULT_EDISMAX },
-  filterQuery: null,
-  boostQuery: null,
+  filterQueries: [],
+  boostQueries: [],
 };
 
 function newId(prefix: string): string {
@@ -122,6 +127,30 @@ export function createFieldConfig(field: string): BuilderFieldConfig {
     id: newId("f"),
     field,
     matchers: [createMatcher("term")],
+  };
+}
+
+export function createFilterQuery(
+  overrides?: Partial<Omit<FilterQueryConfig, "id">>
+): FilterQueryConfig {
+  return {
+    id: newId("fq"),
+    field: "",
+    value: "",
+    ...overrides,
+  };
+}
+
+export function createBoostQuery(
+  overrides?: Partial<Omit<BoostQueryConfig, "id">>
+): BoostQueryConfig {
+  return {
+    id: newId("bq"),
+    field: "",
+    mode: "term",
+    value: "",
+    boost: DEFAULT_BOOST_QUERY_BOOST,
+    ...overrides,
   };
 }
 

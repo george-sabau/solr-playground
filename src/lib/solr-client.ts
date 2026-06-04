@@ -93,6 +93,23 @@ export async function solrJson<T>(
   return res.json() as Promise<T>;
 }
 
+async function solrJsonWithUrlParams<T>(
+  path: string,
+  params: URLSearchParams
+): Promise<T> {
+  const trimmed = path.replace(/^\/+/, "");
+  const q = params.toString();
+  const url = `/api/solr/${trimmed}${q ? `?${q}` : ""}`;
+  const headers = buildSolrHeaders();
+  headers.set("Accept", "application/json");
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export async function fetchCoresStatus(): Promise<string[]> {
   const active = getActiveEndpoint(useSolrStore.getState());
   if (!active) return [];
@@ -148,6 +165,8 @@ export function fetchSchemaCopyFields(
   });
 }
 
+import { buildSelectSearchParams } from "@/lib/query/select-params";
+
 export interface RunSelectParams {
   q: string;
   rows?: number;
@@ -155,23 +174,27 @@ export interface RunSelectParams {
   fl?: string;
   sort?: string;
   extra?: Record<string, string>;
+  fq?: string[];
+  bq?: string[];
 }
 
 export function runSelect(
   core: string,
   params: RunSelectParams
 ): Promise<SelectResponse> {
-  const search: Record<string, string> = {
-    wt: "json",
-    indent: "true",
-    fl: params.fl ?? "*,score",
-    rows: String(params.rows ?? 20),
-    start: String(params.start ?? 0),
-    q: params.q,
-    ...(params.sort ? { sort: params.sort } : {}),
-    ...(params.extra ?? {}),
-  };
-  return solrJson<SelectResponse>(`${core}/select`, search);
+  const urlParams = buildSelectSearchParams(
+    params.q,
+    params.extra ?? {},
+    params.fq ?? [],
+    params.bq ?? [],
+    {
+      rows: params.rows,
+      start: params.start,
+      fl: params.fl,
+      sort: params.sort,
+    }
+  );
+  return solrJsonWithUrlParams<SelectResponse>(`${core}/select`, urlParams);
 }
 
 export function runFieldAnalysis(

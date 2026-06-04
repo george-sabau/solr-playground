@@ -52,6 +52,8 @@ export function QueryPlayground() {
   const [committedPlan, setCommittedPlan] = useState<SearchPlan>({
     q: DEFAULT_QUERY,
     extra: { defType: "lucene" },
+    fq: [],
+    bq: [],
     summary: DEFAULT_QUERY,
   });
   const [start, setStart] = useState(0);
@@ -74,6 +76,8 @@ export function QueryPlayground() {
           start: startIdx,
           rows: PAGE_SIZE,
           extra: plan.extra,
+          fq: plan.fq,
+          bq: plan.bq,
         });
         setResponse(res);
       } catch (e) {

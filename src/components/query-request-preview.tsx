@@ -7,6 +7,8 @@ export function QueryRequestPreview({
   core,
   q,
   extra,
+  fq = [],
+  bq = [],
   start,
   rows,
 }: {
@@ -14,12 +16,16 @@ export function QueryRequestPreview({
   core: string;
   q: string;
   extra: Record<string, string>;
+  fq?: string[];
+  bq?: string[];
   start?: number;
   rows?: number;
 }) {
   const { proxy, upstream } = buildSelectRequestUrl(baseUrl, core, q, extra, {
     start,
     rows,
+    fq,
+    bq,
   });
 
   return (

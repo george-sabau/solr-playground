@@ -8,13 +8,15 @@ const emptyBuilder: BuilderState = {
   fields: [],
   combineWith: "OR",
   edismax: { mm: "", min: "", tie: "", qfOverride: "" },
-  filterQuery: null,
-  boostQuery: null,
+  filterQueries: [],
+  boostQueries: [],
 };
 
 const plan: SearchPlan = {
   q: "name:smith",
   extra: { defType: "lucene" },
+  fq: [],
+  bq: [],
   summary: "name:smith",
 };
 

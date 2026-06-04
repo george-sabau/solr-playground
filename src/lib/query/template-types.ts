@@ -1,10 +1,14 @@
 import type {
+  BoostQueryConfig,
   BuilderState,
   FieldMatcher,
+  FilterQueryConfig,
   QueryParserMode,
 } from "@/lib/query/types";
 import {
+  createBoostQuery,
   createFieldConfig,
+  createFilterQuery,
   createMatcher,
   DEFAULT_EDISMAX,
 } from "@/lib/query/types";
@@ -16,14 +20,59 @@ export interface QueryTemplatePayload {
   sourceUrl?: string;
 }
 
+type LegacyBuilderPayload = BuilderState & {
+  filterQuery?: FilterQueryConfig | null;
+  boostQuery?: BoostQueryConfig | null;
+};
+
+function stripFilterBoostIds(
+  items: FilterQueryConfig[] | BoostQueryConfig[]
+): FilterQueryConfig[] | BoostQueryConfig[] {
+  return items.map((item) => {
+    const { id, ...rest } = item;
+    void id;
+    return { ...rest, id: "" } as FilterQueryConfig & BoostQueryConfig;
+  });
+}
+
+function normalizeFilterQueries(raw: LegacyBuilderPayload): FilterQueryConfig[] {
+  if (Array.isArray(raw.filterQueries)) {
+    return raw.filterQueries.map((f) => ({
+      ...f,
+      id: f.id || "",
+    }));
+  }
+  const legacy = raw.filterQuery;
+  if (legacy && typeof legacy === "object" && legacy.field) {
+    return [{ ...legacy, id: legacy.id ?? "" }];
+  }
+  return [];
+}
+
+function normalizeBoostQueries(raw: LegacyBuilderPayload): BoostQueryConfig[] {
+  if (Array.isArray(raw.boostQueries)) {
+    return raw.boostQueries.map((b) => ({
+      ...b,
+      id: b.id || "",
+    }));
+  }
+  const legacy = raw.boostQuery;
+  if (legacy && typeof legacy === "object" && legacy.field) {
+    return [{ ...legacy, id: legacy.id ?? "" }];
+  }
+  return [];
+}
+
 /** Logical builder config without ephemeral row ids (for persistence). */
 export function stripBuilderStateIds(state: BuilderState): BuilderState {
   return {
     searchText: state.searchText,
     combineWith: state.combineWith,
     edismax: { ...state.edismax },
-    filterQuery: state.filterQuery ? { ...state.filterQuery } : null,
-    boostQuery: state.boostQuery ? { ...state.boostQuery } : null,
+    filterQueries: stripFilterBoostIds(
+      state.filterQueries
+    ) as FilterQueryConfig[],
+    boostQueries: stripFilterBoostIds(state.boostQueries) as BoostQueryConfig[],
     fields: state.fields.map((f) => ({
       id: "",
       field: f.field,
@@ -42,8 +91,16 @@ export function cloneBuilderStateForApply(state: BuilderState): BuilderState {
     searchText: state.searchText,
     combineWith: state.combineWith,
     edismax: { ...state.edismax },
-    filterQuery: state.filterQuery ? { ...state.filterQuery } : null,
-    boostQuery: state.boostQuery ? { ...state.boostQuery } : null,
+    filterQueries: state.filterQueries.map((f) => {
+      const { id, ...rest } = f;
+      void id;
+      return createFilterQuery(rest);
+    }),
+    boostQueries: state.boostQueries.map((b) => {
+      const { id, ...rest } = b;
+      void id;
+      return createBoostQuery(rest);
+    }),
     fields: state.fields.map((f) => {
       const fieldName = f.field;
       const minLength = f.minLength;
@@ -95,16 +152,17 @@ export function deserializeTemplatePayload(json: string): QueryTemplatePayload {
   if (!p.parser || !p.builder) {
     throw new Error("Template payload is missing parser or builder.");
   }
+  const raw = p.builder as LegacyBuilderPayload;
   return {
     version: 1,
     parser: p.parser,
     builder: {
-      searchText: p.builder.searchText ?? "",
-      combineWith: p.builder.combineWith ?? "OR",
-      edismax: { ...DEFAULT_EDISMAX, ...p.builder.edismax },
-      fields: Array.isArray(p.builder.fields) ? p.builder.fields : [],
-      filterQuery: p.builder.filterQuery ?? null,
-      boostQuery: p.builder.boostQuery ?? null,
+      searchText: raw.searchText ?? "",
+      combineWith: raw.combineWith ?? "OR",
+      edismax: { ...DEFAULT_EDISMAX, ...raw.edismax },
+      fields: Array.isArray(raw.fields) ? raw.fields : [],
+      filterQueries: normalizeFilterQueries(raw),
+      boostQueries: normalizeBoostQueries(raw),
     },
     sourceUrl: p.sourceUrl,
   };

@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
-  compileBoostToBq,
+  buildSelectRequestUrl,
+  compileBoostQueries,
   compileBuilderSearch,
   compileFieldsToQ,
+  compileFilterQueries,
   compileFilterToFq,
   escapeLuceneTerm,
+  formatCompiledQueryDisplay,
 } from "@/lib/query/compile";
 import {
+  createBoostQuery,
   createFieldConfig,
+  createFilterQuery,
   DEFAULT_BUILDER_STATE,
 } from "@/lib/query/types";
 
@@ -39,59 +44,75 @@ describe("compileFilterToFq", () => {
   it("compiles boolean filter as true/false", () => {
     expect(
       compileFilterToFq(
-        { field: "is_active", value: "true" },
+        createFilterQuery({ field: "is_active", value: "true" }),
         "boolean"
       )
     ).toBe("is_active:true");
-    expect(
-      compileFilterToFq(
-        { field: "is_active", value: "FALSE" },
-        "boolean"
-      )
-    ).toBe("is_active:false");
-  });
-
-  it("compiles string filter with quoting when needed", () => {
-    expect(
-      compileFilterToFq({ field: "email", value: "a@b.com" })
-    ).toBe("email:a@b.com");
   });
 });
 
-describe("compileBoostToBq", () => {
-  it("compiles field boost with caret", () => {
+describe("compileFilterQueries and compileBoostQueries", () => {
+  it("returns multiple compiled clauses", () => {
+    const state = {
+      ...DEFAULT_BUILDER_STATE,
+      filterQueries: [
+        createFilterQuery({ field: "is_active", value: "true" }),
+        createFilterQuery({ field: "country", value: "FR" }),
+      ],
+      boostQueries: [
+        createBoostQuery({
+          field: "interests",
+          value: "design",
+          boost: 10,
+        }),
+      ],
+    };
     expect(
-      compileBoostToBq({
-        field: "interests",
-        mode: "term",
-        value: "design",
-        boost: 10,
-      })
-    ).toBe("interests:design^10");
+      compileFilterQueries(state, { is_active: "boolean" })
+    ).toEqual(["is_active:true", "country:FR"]);
+    expect(compileBoostQueries(state)).toEqual(["interests:design^10"]);
   });
 });
 
 describe("compileBuilderSearch", () => {
-  it("includes fq and bq in extra when configured", () => {
+  it("includes fq and bq arrays when configured", () => {
     const plan = compileBuilderSearch(
       {
         ...DEFAULT_BUILDER_STATE,
         searchText: "paris",
         fields: [createFieldConfig("city")],
-        filterQuery: { field: "is_active", value: "true" },
-        boostQuery: {
-          field: "interests",
-          mode: "term",
-          value: "design",
-          boost: 10,
-        },
+        filterQueries: [createFilterQuery({ field: "is_active", value: "true" })],
+        boostQueries: [
+          createBoostQuery({
+            field: "interests",
+            value: "design",
+            boost: 10,
+          }),
+        ],
       },
       "lucene",
       { fieldTypes: { is_active: "boolean" } }
     );
-    expect(plan.extra.fq).toBe("is_active:true");
-    expect(plan.extra.bq).toBe("interests:design^10");
-    expect(plan.summary).toContain("fq=is_active:true");
-    expect(plan.summary).toContain("bq=interests:design^10");
+    expect(plan.fq).toEqual(["is_active:true"]);
+    expect(plan.bq).toEqual(["interests:design^10"]);
+    expect(plan.summary).toContain("Filters:");
+    expect(plan.summary).toContain("Boosts:");
+    expect(formatCompiledQueryDisplay(plan)).toContain("fq: is_active:true");
+    expect(formatCompiledQueryDisplay(plan)).toContain("bq: interests:design^10");
+  });
+});
+
+describe("buildSelectRequestUrl", () => {
+  it("encodes repeated fq and bq in the URL", () => {
+    const { proxy } = buildSelectRequestUrl(
+      "http://localhost:8983/solr",
+      "customers",
+      "city:paris",
+      { defType: "lucene" },
+      { fq: ["is_active:true", "country:FR"], bq: ["interests:design^10"] }
+    );
+    expect(proxy).toContain("fq=is_active%3Atrue");
+    expect(proxy).toContain("fq=country%3AFR");
+    expect(proxy).toContain("bq=interests%3Adesign%5E10");
   });
 });

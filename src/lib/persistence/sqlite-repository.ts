@@ -195,6 +195,29 @@ export class SqlitePersistenceRepository implements PersistenceRepository {
     return id;
   }
 
+  updateQueryTemplate(
+    id: string,
+    input: {
+      parser: QueryParserMode;
+      payload: QueryTemplatePayload;
+    }
+  ): void {
+    const existing = this.getQueryTemplate(id);
+    if (!existing) {
+      throw new Error(`Template not found: ${id}`);
+    }
+    const now = new Date().toISOString();
+    this.db
+      .update(queryBuilderTemplates)
+      .set({
+        parser: input.parser,
+        payloadJson: serializeTemplatePayload(input.payload),
+        updatedAt: now,
+      })
+      .where(eq(queryBuilderTemplates.id, id))
+      .run();
+  }
+
   deleteQueryTemplate(id: string): void {
     this.db
       .delete(queryBuilderTemplates)

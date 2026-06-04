@@ -77,6 +77,61 @@ describe("query template persistence", () => {
     expect(record?.payload.builder.fields[0]?.field).toBe("city");
   });
 
+  it("persists multiple filter and boost queries in template payload", () => {
+    const repo = getSqliteRepository();
+    const payload = buildTemplatePayload("lucene", {
+      ...sampleBuilder(),
+      filterQueries: [
+        { id: "", field: "is_active", value: "true" },
+        { id: "", field: "country", value: "FR" },
+      ],
+      boostQueries: [
+        {
+          id: "",
+          field: "interests",
+          mode: "term",
+          value: "design",
+          boost: 10,
+        },
+      ],
+    });
+    const id = repo.createQueryTemplate({
+      endpointId: "ep-1",
+      core: "customers",
+      name: "Multi fq bq",
+      parser: "lucene",
+      payload,
+    });
+    const stored = repo.getQueryTemplate(id);
+    expect(stored?.payload.builder.filterQueries).toHaveLength(2);
+    expect(stored?.payload.builder.boostQueries).toHaveLength(1);
+  });
+
+  it("updates template in place without renaming", () => {
+    const repo = getSqliteRepository();
+    const id = repo.createQueryTemplate({
+      endpointId: "ep-1",
+      core: "customers",
+      name: "Editable",
+      parser: "lucene",
+      payload: buildTemplatePayload("lucene", sampleBuilder()),
+    });
+
+    const updated = {
+      ...sampleBuilder(),
+      searchText: "Paris updated",
+    };
+    repo.updateQueryTemplate(id, {
+      parser: "edismax",
+      payload: buildTemplatePayload("edismax", updated),
+    });
+
+    const record = repo.getQueryTemplate(id);
+    expect(record?.name).toBe("Editable");
+    expect(record?.parser).toBe("edismax");
+    expect(record?.payload.builder.searchText).toBe("Paris updated");
+  });
+
   it("deletes template by id", () => {
     const repo = getSqliteRepository();
     const id = repo.createQueryTemplate({

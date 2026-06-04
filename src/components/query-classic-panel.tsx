@@ -82,6 +82,8 @@ export function QueryClassicPanel({
         core={core}
         q={plan.q}
         extra={plan.extra}
+        fq={plan.fq}
+        bq={plan.bq}
       />
 
       <div className="flex justify-end">

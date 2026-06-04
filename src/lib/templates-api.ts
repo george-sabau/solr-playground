@@ -62,12 +62,36 @@ export async function createTemplate(input: {
   });
   if (res.status === 409) {
     const body = (await res.json()) as { error?: string };
-    throw new Error(body.error ?? "A template with this name already exists.");
+    throw new Error(
+      body.error ??
+        "A template with this name already exists. Load it from Load from source to update it, or choose a different name."
+    );
   }
   if (!res.ok) {
     throw new Error(await readApiError(res, "Failed to save template"));
   }
   return res.json() as Promise<{ id: string }>;
+}
+
+export async function updateTemplate(
+  id: string,
+  input: {
+    parser: QueryParserMode;
+    payload: QueryTemplatePayload;
+  }
+): Promise<{ id: string; name: string }> {
+  const res = await fetch(`/api/presets/templates/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (res.status === 404) {
+    throw new Error("Template not found. It may have been deleted.");
+  }
+  if (!res.ok) {
+    throw new Error(await readApiError(res, "Failed to update template"));
+  }
+  return res.json() as Promise<{ id: string; name: string }>;
 }
 
 export async function deleteTemplate(id: string): Promise<void> {

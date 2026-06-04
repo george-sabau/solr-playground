@@ -52,22 +52,54 @@ describe("template payload helpers", () => {
     expect(payload.builder.searchText).toBe("x");
   });
 
-  it("round-trips filter and boost query in payload", () => {
+  it("round-trips multiple filter and boost queries in payload", () => {
     const state = {
       ...DEFAULT_BUILDER_STATE,
-      filterQuery: { field: "is_active", value: "true" },
-      boostQuery: {
-        field: "interests",
-        mode: "term" as const,
-        value: "design",
-        boost: 10,
-      },
+      filterQueries: [
+        { id: "", field: "is_active", value: "true" },
+        { id: "", field: "country", value: "FR" },
+      ],
+      boostQueries: [
+        {
+          id: "",
+          field: "interests",
+          mode: "term" as const,
+          value: "design",
+          boost: 10,
+        },
+      ],
     };
     const payload = buildTemplatePayload("lucene", state);
     const restored = deserializeTemplatePayload(
       serializeTemplatePayload(payload)
     );
-    expect(restored.builder.filterQuery).toEqual(state.filterQuery);
-    expect(restored.builder.boostQuery).toEqual(state.boostQuery);
+    expect(restored.builder.filterQueries).toHaveLength(2);
+    expect(restored.builder.boostQueries).toHaveLength(1);
+    expect(restored.builder.filterQueries[0]?.field).toBe("is_active");
+  });
+
+  it("migrates legacy single filterQuery and boostQuery", () => {
+    const legacy = JSON.stringify({
+      version: 1,
+      parser: "lucene",
+      builder: {
+        searchText: "",
+        fields: [],
+        combineWith: "OR",
+        edismax: { mm: "", min: "", tie: "", qfOverride: "" },
+        filterQuery: { field: "is_active", value: "true" },
+        boostQuery: {
+          field: "interests",
+          mode: "term",
+          value: "design",
+          boost: 10,
+        },
+      },
+    });
+    const restored = deserializeTemplatePayload(legacy);
+    expect(restored.builder.filterQueries).toHaveLength(1);
+    expect(restored.builder.filterQueries[0]?.field).toBe("is_active");
+    expect(restored.builder.boostQueries).toHaveLength(1);
+    expect(restored.builder.boostQueries[0]?.field).toBe("interests");
   });
 });

@@ -14,6 +14,7 @@ import {
   DEFAULT_FUZZY_DISTANCE,
   DEFAULT_MIN_QUERY_LENGTH,
 } from "@/lib/query/types";
+import { buildSelectSearchParams } from "@/lib/query/select-params";
 
 const LUCENE_SPECIAL = /[+\-&|!(){}\[\]^"~*?:\\/]/g;
 
@@ -186,29 +187,66 @@ export function compileBoostToBq(config: BoostQueryConfig): string | null {
   return compileMatcherExpr(field, matcher, value);
 }
 
-function appendFqBqSummarySuffix(summary: string, extra: Record<string, string>): string {
-  const parts = [summary];
-  if (extra.fq) parts.push(`fq=${extra.fq}`);
-  if (extra.bq) parts.push(`bq=${extra.bq}`);
-  return parts.length > 1 ? parts.join(" · ") : summary;
-}
-
-function applyFqBqToExtra(
-  extra: Record<string, string>,
+export function compileFilterQueries(
   state: BuilderState,
   fieldTypes?: Record<string, string | undefined>
-): void {
-  if (state.filterQuery) {
-    const fq = compileFilterToFq(
-      state.filterQuery,
-      fieldTypes?.[state.filterQuery.field.trim()]
-    );
-    if (fq) extra.fq = fq;
+): string[] {
+  return state.filterQueries
+    .map((config) =>
+      compileFilterToFq(config, fieldTypes?.[config.field.trim()])
+    )
+    .filter((clause): clause is string => clause !== null);
+}
+
+export function compileBoostQueries(state: BuilderState): string[] {
+  return state.boostQueries
+    .map((config) => compileBoostToBq(config))
+    .filter((clause): clause is string => clause !== null);
+}
+
+export function describeFilterQuery(
+  config: FilterQueryConfig,
+  fieldType?: string
+): string {
+  const compiled = compileFilterToFq(config, fieldType);
+  if (compiled) return compiled;
+  const field = config.field.trim() || "(no field)";
+  const value = config.value.trim() || "(empty)";
+  return `${field}:${value}`;
+}
+
+export function describeBoostQuery(config: BoostQueryConfig): string {
+  const compiled = compileBoostToBq(config);
+  if (compiled) return compiled;
+  const field = config.field.trim() || "(no field)";
+  const value = config.value.trim() || "(empty)";
+  return `${field}:${value}^${config.boost}`;
+}
+
+function buildSummaryWithFqBq(
+  baseSummary: string,
+  fq: string[],
+  bq: string[]
+): string {
+  const parts = [baseSummary];
+  if (fq.length > 0) {
+    parts.push(`Filters: ${fq.join(" · ")}`);
   }
-  if (state.boostQuery) {
-    const bq = compileBoostToBq(state.boostQuery);
-    if (bq) extra.bq = bq;
+  if (bq.length > 0) {
+    parts.push(`Boosts: ${bq.join(" · ")}`);
   }
+  return parts.join(" · ");
+}
+
+export function formatCompiledQueryDisplay(plan: SearchPlan): string {
+  const lines = [`q: ${plan.q}`];
+  for (const clause of plan.fq) {
+    lines.push(`fq: ${clause}`);
+  }
+  for (const clause of plan.bq) {
+    lines.push(`bq: ${clause}`);
+  }
+  return lines.join("\n");
 }
 
 function qfFromFields(fields: BuilderFieldConfig[]): string {
@@ -245,7 +283,8 @@ export function compileBuilderSearch(
       state.edismax,
       qfFromFields(state.fields)
     );
-    applyFqBqToExtra(extra, state, options?.fieldTypes);
+    const fq = compileFilterQueries(state, options?.fieldTypes);
+    const bq = compileBoostQueries(state);
     const baseSummary =
       text && state.fields.length > 0
         ? `"${text}" → ${state.fields.map((f) => f.field).join(", ")}`
@@ -253,16 +292,21 @@ export function compileBuilderSearch(
     return {
       q,
       extra,
-      summary: appendFqBqSummarySuffix(baseSummary, extra),
+      fq,
+      bq,
+      summary: buildSummaryWithFqBq(baseSummary, fq, bq),
     };
   }
 
   const extra = { defType: "lucene" };
-  applyFqBqToExtra(extra, state, options?.fieldTypes);
+  const fq = compileFilterQueries(state, options?.fieldTypes);
+  const bq = compileBoostQueries(state);
   return {
     q: qFromFields,
     extra,
-    summary: appendFqBqSummarySuffix(qFromFields, extra),
+    fq,
+    bq,
+    summary: buildSummaryWithFqBq(qFromFields, fq, bq),
   };
 }
 
@@ -275,7 +319,7 @@ export function compileClassicSearch(
     parser === "lucene"
       ? { defType: "lucene" }
       : buildEdismaxExtra(parser, state.edismax, "", state.qf);
-  return { q, extra, summary: q };
+  return { q, extra, fq: [], bq: [], summary: q };
 }
 
 export function buildSelectRequestUrl(
@@ -283,17 +327,21 @@ export function buildSelectRequestUrl(
   core: string,
   q: string,
   extra: Record<string, string>,
-  opts?: { start?: number; rows?: number; fl?: string }
+  opts?: {
+    start?: number;
+    rows?: number;
+    fl?: string;
+    fq?: string[];
+    bq?: string[];
+  }
 ): { proxy: string; upstream: string } {
-  const params = new URLSearchParams({
+  const params = buildSelectSearchParams(
     q,
-    wt: "json",
-    indent: "true",
-    fl: opts?.fl ?? "*,score",
-    rows: String(opts?.rows ?? 20),
-    start: String(opts?.start ?? 0),
-    ...extra,
-  });
+    extra,
+    opts?.fq ?? [],
+    opts?.bq ?? [],
+    { start: opts?.start, rows: opts?.rows, fl: opts?.fl }
+  );
   const qs = params.toString();
   const upstream = `${baseUrl.replace(/\/+$/, "")}/${core}/select?${qs}`;
   const proxy = `/api/solr/${core}/select?${qs}`;

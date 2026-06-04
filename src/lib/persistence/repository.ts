@@ -16,5 +16,12 @@ export interface PersistenceRepository {
     parser: QueryParserMode;
     payload: QueryTemplatePayload;
   }): string;
+  updateQueryTemplate(
+    id: string,
+    input: {
+      parser: QueryParserMode;
+      payload: QueryTemplatePayload;
+    }
+  ): void;
   deleteQueryTemplate(id: string): void;
 }

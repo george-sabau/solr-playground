@@ -26,11 +26,11 @@ export function validateBuilderAgainstSchema(
   const schemaNames = new Set(searchableFields.map((f) => f.name));
   const usedFields = builder.fields.map((f) => f.field).filter(Boolean);
   const optionFields: string[] = [];
-  if (builder.filterQuery?.field.trim()) {
-    optionFields.push(builder.filterQuery.field.trim());
+  for (const fq of builder.filterQueries) {
+    if (fq.field.trim()) optionFields.push(fq.field.trim());
   }
-  if (builder.boostQuery?.field.trim()) {
-    optionFields.push(builder.boostQuery.field.trim());
+  for (const bq of builder.boostQueries) {
+    if (bq.field.trim()) optionFields.push(bq.field.trim());
   }
   const allReferenced = [...usedFields, ...optionFields];
   const missingFields = allReferenced.filter((name) => !schemaNames.has(name));

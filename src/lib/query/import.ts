@@ -13,7 +13,9 @@ import {
   DEFAULT_FUZZY_DISTANCE,
   DEFAULT_MATCHER_BOOST,
   DEFAULT_MIN_QUERY_LENGTH,
+  createBoostQuery,
   createFieldConfig,
+  createFilterQuery,
   createMatcher,
 } from "@/lib/query/types";
 
@@ -367,22 +369,24 @@ function buildFieldConfigs(
   });
 }
 
-function parseFilterOrBoostParam(
-  raw: string,
-  kind: "filter" | "boost"
-): FilterQueryConfig | BoostQueryConfig | null {
+function parseFilterParam(raw: string): FilterQueryConfig | null {
   try {
     const clause = parseFieldClause(raw.trim());
-    if (kind === "filter") {
-      return { field: clause.field, value: clause.value };
-    }
-    return {
+    return createFilterQuery({ field: clause.field, value: clause.value });
+  } catch {
+    return null;
+  }
+}
+
+function parseBoostParam(raw: string): BoostQueryConfig | null {
+  try {
+    const clause = parseFieldClause(raw.trim());
+    return createBoostQuery({
       field: clause.field,
       mode: clause.mode,
       value: clause.value,
-      boost:
-        clause.boost > 0 ? clause.boost : DEFAULT_BOOST_QUERY_BOOST,
-    };
+      boost: clause.boost > 0 ? clause.boost : DEFAULT_BOOST_QUERY_BOOST,
+    });
   } catch {
     return null;
   }
@@ -391,33 +395,47 @@ function parseFilterOrBoostParam(
 function importFqBq(
   params: URLSearchParams,
   warnings: string[]
-): Pick<BuilderState, "filterQuery" | "boostQuery"> {
-  const fqRaw = params.get("fq");
-  const bqRaw = params.get("bq");
-  let filterQuery: FilterQueryConfig | null = null;
-  let boostQuery: BoostQueryConfig | null = null;
+): Pick<BuilderState, "filterQueries" | "boostQueries"> {
+  const filterQueries: FilterQueryConfig[] = [];
+  const boostQueries: BoostQueryConfig[] = [];
 
-  if (fqRaw) {
-    filterQuery = parseFilterOrBoostParam(fqRaw, "filter") as FilterQueryConfig | null;
-    if (!filterQuery) {
-      warnings.push("Could not parse fq into filter query — set it manually.");
+  params.getAll("fq").forEach((raw, index) => {
+    const parsed = parseFilterParam(raw);
+    if (parsed) {
+      filterQueries.push(parsed);
+    } else {
+      warnings.push(
+        `Could not parse fq #${index + 1} — add filter manually if needed.`
+      );
     }
-  }
-  if (bqRaw) {
-    boostQuery = parseFilterOrBoostParam(bqRaw, "boost") as BoostQueryConfig | null;
-    if (!boostQuery) {
-      warnings.push("Could not parse bq into boost query — set it manually.");
+  });
+
+  params.getAll("bq").forEach((raw, index) => {
+    const parsed = parseBoostParam(raw);
+    if (parsed) {
+      boostQueries.push(parsed);
+    } else {
+      warnings.push(
+        `Could not parse bq #${index + 1} — add boost manually if needed.`
+      );
     }
-  }
-  return { filterQuery, boostQuery };
+  });
+
+  return { filterQueries, boostQueries };
 }
 
 function mergeFqBq(state: BuilderState, params: URLSearchParams, warnings: string[]) {
-  const { filterQuery, boostQuery } = importFqBq(params, warnings);
+  const imported = importFqBq(params, warnings);
   return {
     ...state,
-    filterQuery: filterQuery ?? state.filterQuery ?? null,
-    boostQuery: boostQuery ?? state.boostQuery ?? null,
+    filterQueries:
+      imported.filterQueries.length > 0
+        ? imported.filterQueries
+        : state.filterQueries,
+    boostQueries:
+      imported.boostQueries.length > 0
+        ? imported.boostQueries
+        : state.boostQueries,
   };
 }
 
@@ -446,8 +464,8 @@ function importFromEdismax(
         combineWith: parsed.combineWith,
         fields: buildFieldConfigs(parsed.fieldGroups),
         edismax,
-        filterQuery: null,
-        boostQuery: null,
+        filterQueries: [],
+        boostQueries: [],
       },
       params,
       warnings
@@ -462,8 +480,8 @@ function importFromEdismax(
         combineWith: "OR",
         fields: [],
         edismax,
-        filterQuery: null,
-        boostQuery: null,
+        filterQueries: [],
+        boostQueries: [],
       },
       params,
       warnings
@@ -485,8 +503,8 @@ function importFromEdismax(
       combineWith: "OR",
       fields,
       edismax,
-      filterQuery: null,
-      boostQuery: null,
+      filterQueries: [],
+      boostQueries: [],
     },
     params,
     warnings
@@ -501,8 +519,8 @@ function importFromLucene(q: string, params: URLSearchParams, warnings: string[]
       combineWith: parsed.combineWith,
       fields: buildFieldConfigs(parsed.fieldGroups),
       edismax: { ...DEFAULT_EDISMAX },
-      filterQuery: null,
-      boostQuery: null,
+      filterQueries: [],
+      boostQueries: [],
     },
     params,
     warnings

@@ -12,6 +12,11 @@ import {
   type CompareColumnState,
 } from "@/components/compare-column";
 import { CompareSummary } from "@/components/compare-summary";
+import type { AiCompareSummary } from "@/lib/ai/compare/types";
+import {
+  buildCompareReportPayload,
+  serializeCompareReportPayload,
+} from "@/lib/compare/report-payload";
 import { compileBuilderSearch } from "@/lib/query/compile";
 import { computeCompareMetrics } from "@/lib/query/compare-metrics";
 import { getSearchableFields } from "@/lib/query/fields";
@@ -42,6 +47,9 @@ function emptyColumn(): CompareColumnState {
 export function ComparePanel() {
   const core = useSolrStore((s) => s.currentCore);
   const activeEndpointId = useSolrStore((s) => s.activeEndpointId);
+  const endpoints = useSolrStore((s) => s.endpoints);
+  const endpointLabel =
+    endpoints.find((e) => e.id === activeEndpointId)?.label ?? "Solr endpoint";
   const schema = useSchema();
 
   const [searchText, setSearchText] = useState("");
@@ -59,6 +67,10 @@ export function ComparePanel() {
   const [errorA, setErrorA] = useState<string | null>(null);
   const [errorB, setErrorB] = useState<string | null>(null);
   const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiEvaluation, setAiEvaluation] = useState<AiCompareSummary | null>(
+    null
+  );
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => {
     void fetch("/api/compare/evaluate", { cache: "no-store" })
@@ -117,6 +129,7 @@ export function ComparePanel() {
     const nextPlanB = compileBuilderSearch(stateB, columnB.parser);
     setPlanA(nextPlanA);
     setPlanB(nextPlanB);
+    setAiEvaluation(null);
     setColumnA((c) => ({ ...c, builderState: stateA }));
     setColumnB((c) => ({ ...c, builderState: stateB }));
 
@@ -135,6 +148,8 @@ export function ComparePanel() {
           start: 0,
           rows: COMPARE_ROWS,
           extra: plan.extra,
+          fq: plan.fq,
+          bq: plan.bq,
         });
         return { res, wall: performance.now() - t0, err: null };
       } catch (e) {
@@ -167,6 +182,50 @@ export function ComparePanel() {
       toast.error(outA.err ?? outB.err ?? "One search failed.");
     }
   }, [core, columnA, columnB, searchText]);
+
+  const handleExportReport = useCallback(() => {
+    if (!core || !planA || !planB || !metrics) {
+      toast.error("Run Compare queries first.");
+      return;
+    }
+    setExportLoading(true);
+    try {
+      const payload = buildCompareReportPayload({
+        core,
+        endpointLabel,
+        sharedSearch: searchText,
+        columnA,
+        columnB,
+        planA,
+        planB,
+        responseA,
+        responseB,
+        metrics,
+        ai: aiEvaluation,
+      });
+      const stored = serializeCompareReportPayload(payload);
+      if (!stored.ok) {
+        toast.error(stored.reason);
+        return;
+      }
+      const reportUrl = new URL("/compare/report", window.location.origin).href;
+      window.open(reportUrl, "_blank", "noopener,noreferrer");
+    } finally {
+      setExportLoading(false);
+    }
+  }, [
+    core,
+    planA,
+    planB,
+    metrics,
+    endpointLabel,
+    searchText,
+    columnA,
+    columnB,
+    responseA,
+    responseB,
+    aiEvaluation,
+  ]);
 
   if (!core) {
     return (
@@ -254,6 +313,10 @@ export function ComparePanel() {
           responseA={responseA}
           responseB={responseB}
           aiAvailable={aiAvailable}
+          aiResult={aiEvaluation}
+          onAiResultChange={setAiEvaluation}
+          onExportReport={handleExportReport}
+          exportLoading={exportLoading}
         />
 
         <div className="grid gap-4 lg:grid-cols-2">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ChevronRight, Loader2, Sparkles } from "lucide-react";
+import { ChevronRight, FileDown, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { AiCompareSummary } from "@/lib/ai/compare/types";
@@ -50,11 +50,19 @@ export function CompareSummary({
   responseA,
   responseB,
   aiAvailable,
+  aiResult,
+  onAiResultChange,
+  onExportReport,
+  exportLoading,
 }: {
   metrics: CompareMetricsResult | null;
   responseA: SelectResponse | null;
   responseB: SelectResponse | null;
   aiAvailable: boolean;
+  aiResult: AiCompareSummary | null;
+  onAiResultChange: (result: AiCompareSummary | null) => void;
+  onExportReport: () => void;
+  exportLoading?: boolean;
 }) {
   const aiResetKey = metrics
     ? `${metrics.searchTerm}|${metrics.sideA.qSummary}|${metrics.sideB.qSummary}`
@@ -72,13 +80,19 @@ export function CompareSummary({
 
   return (
     <div className="space-y-3">
-      <ComparisonMetricsSummary metrics={metrics} />
+      <ComparisonMetricsSummary
+        metrics={metrics}
+        onExportReport={onExportReport}
+        exportLoading={exportLoading}
+      />
       <CompareAiSummary
         key={aiResetKey}
         metrics={metrics}
         responseA={responseA}
         responseB={responseB}
         aiAvailable={aiAvailable}
+        aiResult={aiResult}
+        onAiResultChange={onAiResultChange}
       />
     </div>
   );
@@ -86,13 +100,40 @@ export function CompareSummary({
 
 function ComparisonMetricsSummary({
   metrics,
+  onExportReport,
+  exportLoading,
 }: {
   metrics: CompareMetricsResult;
+  onExportReport: () => void;
+  exportLoading?: boolean;
 }) {
   const { sideA, sideB, overlap, heuristics, hints } = metrics;
 
+  const exportButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-8 text-xs"
+      disabled={!!exportLoading}
+      onClick={onExportReport}
+      title="Open a PDF evaluation report in a new tab"
+    >
+      {exportLoading ? (
+        <Loader2 className="size-3.5 animate-spin" />
+      ) : (
+        <FileDown className="size-3.5" />
+      )}
+      Export report
+    </Button>
+  );
+
   return (
-    <CollapsiblePanel title="Comparison summary" defaultOpen>
+    <CollapsiblePanel
+      title="Comparison summary"
+      defaultOpen
+      actions={exportButton}
+    >
       <div className="overflow-x-auto">
         <table className="w-full min-w-[32rem] border-collapse text-left text-xs">
           <thead>
@@ -183,14 +224,17 @@ function CompareAiSummary({
   responseA,
   responseB,
   aiAvailable,
+  aiResult,
+  onAiResultChange,
 }: {
   metrics: CompareMetricsResult;
   responseA: SelectResponse | null;
   responseB: SelectResponse | null;
   aiAvailable: boolean;
+  aiResult: AiCompareSummary | null;
+  onAiResultChange: (result: AiCompareSummary | null) => void;
 }) {
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<AiCompareSummary | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
 
@@ -216,6 +260,7 @@ function CompareAiSummary({
     }
     setAiLoading(true);
     setAiError(null);
+    onAiResultChange(null);
     setPanelOpen(true);
     try {
       const res = await fetch("/api/compare/evaluate", {
@@ -248,7 +293,7 @@ function CompareAiSummary({
       if (!body.evaluation) {
         throw new Error("No evaluation returned.");
       }
-      setAiResult(body.evaluation);
+      onAiResultChange(body.evaluation);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "AI evaluation failed";
       setAiError(msg);

@@ -13,7 +13,7 @@ The app is a single page at `/` with three top-level tabs: **Play**, **Compare**
 | Tab | Sub-areas | Highlights |
 | --- | --------- | ---------- |
 | **Play** | Query builder (default) · Classic syntax | Lucene / edismax / dismax parsers; optional **filter query** (`fq`) and **boost query** (`bq`); dual **request preview** (app proxy + upstream Solr URL); 20-row pagination; expandable hits with **live indexed-token analysis** via `/analysis/field` |
-| **Compare** | Source A · Source B | Load from Solr URL or saved template; shared search term; top-10 side-by-side results; collapsible **Comparison summary** (deterministic metrics); optional **AI summary** via Gemini (`GEMINI_API_KEY` in `.env.local`) |
+| **Compare** | Source A · Source B | Load from Solr URL or saved template; shared search term; top-10 side-by-side results; collapsible **Comparison summary** (deterministic metrics); **Export report** (multi-page PDF in a new tab); optional **AI summary** via Gemini (`GEMINI_API_KEY` in `.env.local`) |
 | **Analyze** | Schema panel | Static fields, dynamic rules, copyFields, internal fields; field-type popover with analyzer chain; Reload |
 
 The local Docker showcase ships two cores — **`customers`** and **`products`** — with seed data in [`solr/data/`](solr/data/). See [`solr/README.md`](solr/README.md) for Solr-only setup and re-indexing.
@@ -52,7 +52,7 @@ Every push and pull request to `main` runs [GitHub Actions](.github/workflows/ci
 | ----- | ------- |
 | lint | `npm run lint` |
 | typecheck | `npm run typecheck` |
-| test | `npm run test` (query logic, **template persistence**, compare AI payload) |
+| test | `npm run test` (query logic, **template persistence**, compare metrics/AI/report payload) |
 | build | `npm run build` |
 | db-migrate | `DATABASE_PATH=:memory: npm run db:migrate` |
 
@@ -119,11 +119,12 @@ Default Solr base URL in the UI: `http://localhost:8983/solr`.
 
 - **Search** — one prompt applied to every selected field.
 - **Load from source** — import a saved template or reverse-engineer a Solr select URL (schema-validated).
-- **Query options** — combine fields with AND/OR; optional **Filter query** (`fq`) to restrict results (e.g. `is_active:true`, with a true/false dropdown for boolean fields); optional **Boost query** (`bq`) to raise scores for a field match (e.g. `interests:design^10`).
+- **Templates** — section below load: **Update template** (when loaded), **Save as new…**, **Manage**.
+- **Query options** — combine fields with AND/OR; add multiple **filter queries** (`fq`, AND’d by Solr) and **boost queries** (`bq`); boolean fields use a true/false dropdown.
 - **Field chips** — toggle indexed fields; configure matchers per field (term, phrase, exact, wildcard, prefix, fuzzy), numeric boost, min length, required (+) / prohibited (−); multiple matchers on one field are OR’d.
 - **Parser** — lucene, edismax, or dismax; edismax exposes mm, min, tie, and qf (auto from selected fields or manual override).
-- **Save as template** — persist matchers, search text, edismax options, and filter/boost settings for the active endpoint + core (see [Query templates](#query-templates)).
-- **Request preview** — shows both the app proxy URL and the upstream Solr URL (including `fq` / `bq` when set) before you run.
+- **Compiled query** and **Builder summary** — show `q`, every `fq`/`bq`, and human-readable filter/boost lines before you run.
+- **Request preview** — app proxy and upstream Solr URLs with repeated `fq` / `bq` params when set.
 
 ### Classic syntax
 
@@ -190,12 +191,12 @@ If the file opens as gibberish text, close it and use the Command Palette (`Ctrl
 
 ## Query templates
 
-On the **Query builder** tab, **Save as template** stores the current parser, field matchers, search text, edismax options, and optional filter/boost queries for the active **endpoint** and **core**. Template names must be unique per endpoint+core pair (duplicate saves return an error).
+On the **Query builder** tab, **Save as template** / **Update template** stores the current parser, field matchers, search text, edismax options, and optional filter/boost queries for the active **endpoint** and **core**. Load a template first to enable **Update template**; otherwise save under a new unique name. Duplicate names on create return an error with guidance to load the existing template instead.
 
 **Load from source** (collapsible) offers two paths (template first by default):
 
 - **From query template** — pick a saved template scoped to the current endpoint and core; switching cores (e.g. `customers` → `products`) shows a different list.
-- **From Solr URL** — reverse-import field matchers, search text, parser, edismax settings, and a single `fq` / `bq` when present; field names are validated against the live schema before applying.
+- **From Solr URL** — reverse-import field matchers, search text, parser, edismax settings, and all `fq` / `bq` params (`getAll`); field names are validated against the live schema before applying. Older saved templates with a single filter/boost are migrated automatically on load.
 
 Templates live in the `query_builder_templates` table (migration v2). Manage or delete saved names from the save dialog.
 
@@ -205,7 +206,7 @@ The **Compare** tab runs two query setups side by side against the same core and
 
 1. **Source A** and **Source B** — each has **Load from source** (Solr URL or saved template), same as Query builder. Both must be loaded before comparing. The README preview uses templates **customers from paris search** (A) and **customers from paris search2** (B) with shared search **`Pari design`**.
 2. **Search (shared)** — one search box; both plans use this text when you click **Compare queries** (Enter runs compare when ready).
-3. **Comparison summary** (collapsible) — table with Solr QTime, wall-clock time, total hits, max/avg scores; chips for overlap, Jaccard, only-in-A/B, avg rank shift, score ratio; neutral hint bullets.
+3. **Comparison summary** (collapsible) — table with Solr QTime, wall-clock time, total hits, max/avg scores; chips for overlap, Jaccard, only-in-A/B, avg rank shift, score ratio; neutral hint bullets. After a compare run, use **Export report** to open a multi-page PDF in a new browser tab (Compare tab stays open). The PDF includes a cover page, introduction (both sources and strategies), technical metrics, optional AI summary (if you ran evaluation), and a collapsed top-10 appendix per side.
 4. **Top 10** results per side (same expandable `ResultDoc` list as Play, including field analysis).
 5. **AI summary** (collapsible, below) — optional Gemini evaluation via **Evaluate relevance (AI)**. Sends both full Solr `/select` response bodies (top 10) plus deterministic comparison metrics to Gemini; returns a verdict, confidence, narrative summary, reasons, metrics interpretation, and per-side notes.
 
@@ -226,6 +227,22 @@ Copy [`.env.example`](.env.example) to `.env.local`, set your key from [Google A
 **Evaluate relevance (AI)** calls `POST /api/compare/evaluate` with both response bodies and metrics. The **AI summary** panel shows the Gemini verdict (`a`, `b`, or `tie`), confidence, summary, reasons, metrics interpretation, per-side notes, and caveats.
 
 Implementation lives in [`src/lib/ai/compare/`](src/lib/ai/compare/) (config, payload builder, Gemini provider, evaluator).
+
+### PDF export (comparison report)
+
+After **Compare queries**, click **Export report** in the **Comparison summary** header. The Compare tab stays open; a new browser tab opens at `/compare/report`, builds a PDF client-side with [`@react-pdf/renderer`](https://react-pdf.org/), and shows it inline (with **Download PDF**).
+
+| PDF section | Contents |
+| ----------- | -------- |
+| Cover | Product name, core, endpoint, shared search term, timestamp |
+| Introduction | Source A vs B labels, template vs URL strategy, compiled `q` / `fq` / `bq` |
+| Technical summary | Same metrics table and overlap/heuristic notes as the UI |
+| AI summary | Full Gemini evaluation if you ran **Evaluate relevance (AI)**; otherwise a short “not performed” note |
+| Appendix | Top 10 per side (rank, id, score, short field snippets) |
+
+Report data is passed via **`localStorage`** (same origin, shared across tabs). A new tab cannot read `sessionStorage` from the Compare tab, so export uses `localStorage` briefly and clears the key after the report page reads it.
+
+Code: [`src/lib/compare/report-payload.ts`](src/lib/compare/report-payload.ts), [`src/components/compare/compare-report-document.tsx`](src/components/compare/compare-report-document.tsx), [`src/app/compare/report/page.tsx`](src/app/compare/report/page.tsx).
 
 ## Analyze tab
 

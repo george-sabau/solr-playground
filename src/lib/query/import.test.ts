@@ -12,6 +12,16 @@ describe("importBuilderFromSolrUrl", () => {
     expect(result.state.fields[0]?.field).toBe("name");
   });
 
+  it("imports multiple fq and bq from URL", () => {
+    const result = importBuilderFromSolrUrl(
+      "http://localhost:8983/solr/customers/select?q=*:*&fq=is_active:true&fq=country:FR&bq=interests:design^10&wt=json"
+    );
+    expect(result.state.filterQueries).toHaveLength(2);
+    expect(result.state.filterQueries[0]?.field).toBe("is_active");
+    expect(result.state.boostQueries).toHaveLength(1);
+    expect(result.state.boostQueries[0]?.field).toBe("interests");
+  });
+
   it("throws when q is missing", () => {
     expect(() =>
       importBuilderFromSolrUrl("http://localhost:8983/solr/customers/select")

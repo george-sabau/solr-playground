@@ -19,8 +19,8 @@ describe("validateBuilderAgainstSchema", () => {
         fields: [createFieldConfig("name")],
         combineWith: "OR",
         edismax: { mm: "", min: "", tie: "", qfOverride: "" },
-        filterQuery: null,
-        boostQuery: null,
+        filterQueries: [],
+        boostQueries: [],
       },
       "lucene",
       schema
@@ -37,8 +37,8 @@ describe("validateBuilderAgainstSchema", () => {
           fields: [createFieldConfig("unknown_field")],
           combineWith: "OR",
           edismax: { mm: "", min: "", tie: "", qfOverride: "" },
-          filterQuery: null,
-          boostQuery: null,
+          filterQueries: [],
+          boostQueries: [],
         },
         "lucene",
         schema
@@ -54,8 +54,8 @@ describe("validateBuilderAgainstSchema", () => {
           fields: [],
           combineWith: "OR",
           edismax: { mm: "", min: "", tie: "", qfOverride: "" },
-          filterQuery: { field: "missing", value: "true" },
-          boostQuery: null,
+          filterQueries: [{ id: "f1", field: "missing", value: "true" }],
+          boostQueries: [],
         },
         "lucene",
         schema
