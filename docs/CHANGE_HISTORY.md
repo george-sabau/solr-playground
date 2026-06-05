@@ -2,13 +2,14 @@
 
 Read this file at the start of agent sessions before changing dev tooling, persistence, or CSS/PostCSS.
 
-## Stable baseline (2026-06-03)
+## Stable baseline (2026-06-03, evening)
 
 Known-good working copy on Windows with dual Node (22 + 24):
 
 - `npm install` — auto-relays to Node 22 via `preinstall`
 - `npm run dev:stack` — force-rebuilds `better-sqlite3`, starts Solr + Next on Node 22
-- Templates / connections persist via SQLite; 74 tests pass
+- Templates / connections persist via SQLite; **102 tests** pass (`npm run test`)
+- Compare **Export report** supports **Technical** (default) and **Business** (Gemini) PDF audiences
 - Tailwind compiles via `postcss.config.mjs` absolute vendor injection
 
 ## Environment constraints (Windows)
@@ -48,6 +49,25 @@ Known-good working copy on Windows with dual Node (22 + 24):
 8. **Ran verification dev servers without cleaning up** — left port 3000 busy; use `stop:stack` or document restarts clearly.
 
 ## Session log (newest first)
+
+### 2026-06-03 — Business-audience PDF export + report polish
+
+- **Feature**: Compare **Export report** now has a **Technical / Business** audience selector beside the green export button. Technical keeps the existing flow (no Gemini). Business calls `POST /api/compare/translate-report` server-side, attaches a `BusinessReportNarrative` to the v2 report payload, and renders the same branded PDF layout with executive-friendly copy.
+- **Data**: [`report-payload.ts`](src/lib/compare/report-payload.ts) bumped to `version: 2` with `audience` + `business`; v1 payloads migrate to `audience: "technical"`. Business filename prefix: `compare-report-business-{date}.pdf`.
+- **AI layer**: [`report-translator.ts`](src/lib/ai/compare/report-translator.ts) — Gemini JSON narrative, compact input (metrics/hints/overlap, slim appendix ids only). [`report-copy.ts`](src/components/compare/report/report-copy.ts) resolves technical vs business section titles and prose in the PDF.
+- **PDF UX**: Business introduction cards hide raw `q`/`fq`/`bq` mono boxes; metrics numbers stay from deterministic `metrics`. Business recommendation page uses translated `recommendation` or `aiNotRunMessage`.
+- **Pitfall — duplicate strategy names**: Gemini `headline` often equals the template `side.label`; [`source-card.tsx`](src/components/compare/report/source-card.tsx) was rendering both. Fix: omit bold `side.label` when `showTechnicalQueries === false` (business mode only).
+- **Pitfall — split export button rejected**: A combined “audience + export” split control was tried and reverted; user preferred separate **Select** + **Export report** (less accidental export risk).
+- **Pitfall — cross-tab report handoff**: `sessionStorage` is per-tab; export must use **`localStorage`** so `/compare/report` in a new tab can read the payload, then clear the key after read.
+- **Pitfall — `@react-pdf` types**: Use `ReactNode` from `react`, not `@react-pdf/renderer`; avoid `undefined` in style arrays.
+- **Tests added**: `report-translator.test.ts`, `translate-report/route.test.ts`, v2 + v1 compat in `report-payload.test.ts` (102 tests total).
+- **Lesson**: Keep numeric facts in `metrics` for business PDFs; let Gemini translate prose only. Disable Business export when `GEMINI_API_KEY` is missing (same pattern as AI evaluate).
+- **Screenshots**: `capture-screenshots.mjs` compare template seeds must include `filterQueries: []` and `boostQueries: []` in builder state (POST 500 otherwise after fq/bq builder work). AI screenshot step is non-fatal on Gemini timeout.
+
+### 2026-06-03 — PDF export + brand refresh (earlier)
+
+- **Feature**: Multi-page comparison PDF via **Export report** → new tab `/compare/report` → `@react-pdf/renderer`. Branded light theme (Solr green, Inter, cards/chips). Page order: cover → introduction → technical summary → AI summary → appendix.
+- **Lesson**: Report payload can exceed `localStorage` limits — `serializeCompareReportPayload` strips appendix snippets when oversized.
 
 ### 2026-06-03 — Stable working copy (Node/npm/sqlite hardening)
 

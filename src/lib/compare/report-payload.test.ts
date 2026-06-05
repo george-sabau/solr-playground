@@ -78,7 +78,9 @@ describe("buildCompareReportPayload", () => {
       ai: null,
     });
 
-    expect(payload.version).toBe(1);
+    expect(payload.version).toBe(2);
+    expect(payload.audience).toBe("technical");
+    expect(payload.business).toBeNull();
     expect(payload.productName).toBe("Solr Playground");
     expect(payload.sourceA.strategyNote).toBe("Loaded from saved template");
     expect(payload.sourceB.strategyNote).toBe("Loaded from Solr URL");
@@ -162,12 +164,100 @@ describe("parseCompareReportPayload", () => {
     });
     const parsed = parseCompareReportPayload(JSON.stringify(payload));
     expect(parsed?.core).toBe("c");
-    expect(parsed?.version).toBe(1);
+    expect(parsed?.version).toBe(2);
+    expect(parsed?.audience).toBe("technical");
+  });
+
+  it("migrates v1 payloads to v2 technical", () => {
+    const metrics = computeCompareMetrics({
+      searchTerm: "q",
+      labelA: "A",
+      labelB: "B",
+      planA: plan,
+      planB: plan,
+      builderA: emptyBuilder,
+      builderB: emptyBuilder,
+      responseA: null,
+      responseB: null,
+      wallTimeA: 0,
+      wallTimeB: 0,
+    });
+    const v2 = buildCompareReportPayload({
+      core: "c",
+      endpointLabel: "e",
+      sharedSearch: "q",
+      columnA: column("A"),
+      columnB: column("B"),
+      planA: plan,
+      planB: plan,
+      responseA: null,
+      responseB: null,
+      metrics,
+      ai: null,
+    });
+    const v1 = {
+      ...v2,
+      version: 1 as const,
+      audience: undefined,
+      business: undefined,
+    };
+    delete (v1 as { audience?: unknown }).audience;
+    delete (v1 as { business?: unknown }).business;
+    const parsed = parseCompareReportPayload(JSON.stringify(v1));
+    expect(parsed?.version).toBe(2);
+    expect(parsed?.audience).toBe("technical");
+    expect(parsed?.business).toBeNull();
+  });
+
+  it("rejects business audience without narrative", () => {
+    const metrics = computeCompareMetrics({
+      searchTerm: "q",
+      labelA: "A",
+      labelB: "B",
+      planA: plan,
+      planB: plan,
+      builderA: emptyBuilder,
+      builderB: emptyBuilder,
+      responseA: null,
+      responseB: null,
+      wallTimeA: 0,
+      wallTimeB: 0,
+    });
+    const payload = buildCompareReportPayload({
+      core: "c",
+      endpointLabel: "e",
+      sharedSearch: "q",
+      columnA: column("A"),
+      columnB: column("B"),
+      planA: plan,
+      planB: plan,
+      responseA: null,
+      responseB: null,
+      metrics,
+      ai: null,
+      audience: "business",
+      business: null,
+    });
+    expect(parseCompareReportPayload(JSON.stringify(payload))).toBeNull();
   });
 
   it("rejects invalid payloads", () => {
     expect(parseCompareReportPayload(null)).toBeNull();
     expect(parseCompareReportPayload("{}")).toBeNull();
+  });
+});
+
+describe("compareReportFilename", () => {
+  it("uses business prefix when audience is business", async () => {
+    const { compareReportFilename } = await import(
+      "@/lib/compare/report-payload"
+    );
+    expect(compareReportFilename("2026-06-03T12:00:00.000Z", "business")).toBe(
+      "compare-report-business-2026-06-03.pdf"
+    );
+    expect(compareReportFilename("2026-06-03T12:00:00.000Z", "technical")).toBe(
+      "compare-report-2026-06-03.pdf"
+    );
   });
 });
 

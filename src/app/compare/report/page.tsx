@@ -45,7 +45,10 @@ export default function CompareReportPage() {
         setState({
           status: "ready",
           blobUrl,
-          filename: compareReportFilename(payload.generatedAt),
+          filename: compareReportFilename(
+            payload.generatedAt,
+            payload.audience
+          ),
           payload,
         });
       } catch (e) {

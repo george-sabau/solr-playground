@@ -42,7 +42,7 @@ npx playwright install chromium      # once, after npm install
 npm run screenshots
 ```
 
-Output goes to [`docs/screenshots/`](docs/screenshots/) (8 PNGs). The **Compare** captures load templates **customers from paris search** (Source A) and **customers from paris search2** (Source B), run a shared search for **`Pari design`**, and show the comparison summary plus **Evaluate relevance (AI)**. Templates are created automatically if missing. **compare-ai-summary** calls Gemini and needs a saved `GEMINI_API_KEY` in `.env.local`. Override the app URL with `APP_URL=http://localhost:3000` if needed. See [`scripts/capture-screenshots.mjs`](scripts/capture-screenshots.mjs) for the capture flow.
+Output goes to [`docs/screenshots/`](docs/screenshots/) (8 PNGs). The **Compare** captures load templates **customers from paris search** (Source A) and **customers from paris search2** (Source B), run a shared search for **`Pari design`**, and show the comparison summary with the **Technical / Business** export audience selector and green **Export report** button, plus **Evaluate relevance (AI)**. Templates are created automatically if missing. **compare-ai-summary** calls Gemini and needs a saved `GEMINI_API_KEY` in `.env.local`. Override the app URL with `APP_URL=http://localhost:3000` if needed. See [`scripts/capture-screenshots.mjs`](scripts/capture-screenshots.mjs) for the capture flow.
 
 ## Continuous integration
 
@@ -52,7 +52,7 @@ Every push and pull request to `main` runs [GitHub Actions](.github/workflows/ci
 | ----- | ------- |
 | lint | `npm run lint` |
 | typecheck | `npm run typecheck` |
-| test | `npm run test` (query logic, **template persistence**, compare metrics/AI/report payload) |
+| test | `npm run test` (query logic, **template persistence**, compare metrics/AI/report payload/translator) |
 | build | `npm run build` |
 | db-migrate | `DATABASE_PATH=:memory: npm run db:migrate` |
 
@@ -206,7 +206,7 @@ The **Compare** tab runs two query setups side by side against the same core and
 
 1. **Source A** and **Source B** — each has **Load from source** (Solr URL or saved template), same as Query builder. Both must be loaded before comparing. The README preview uses templates **customers from paris search** (A) and **customers from paris search2** (B) with shared search **`Pari design`**.
 2. **Search (shared)** — one search box; both plans use this text when you click **Compare queries** (Enter runs compare when ready).
-3. **Comparison summary** (collapsible) — table with Solr QTime, wall-clock time, total hits, max/avg scores; chips for overlap, Jaccard, only-in-A/B, avg rank shift, score ratio; neutral hint bullets. After a compare run, use **Export report** to open a multi-page PDF in a new browser tab (Compare tab stays open). The PDF includes a cover page, introduction (both sources and strategies), technical metrics, optional AI summary (if you ran evaluation), and a collapsed top-10 appendix per side.
+3. **Comparison summary** (collapsible) — table with Solr QTime, wall-clock time, total hits, max/avg scores; chips for overlap, Jaccard, only-in-A/B, avg rank shift, score ratio; neutral hint bullets. After a compare run, pick **Technical** or **Business** and click **Export report** to open a multi-page PDF in a new browser tab (Compare tab stays open). The PDF includes a cover page, introduction (both sources and strategies), technical metrics, optional AI summary (if you ran evaluation), and a collapsed top-10 appendix per side.
 4. **Top 10** results per side (same expandable `ResultDoc` list as Play, including field analysis).
 5. **AI summary** (collapsible, below) — optional Gemini evaluation via **Evaluate relevance (AI)**. Sends both full Solr `/select` response bodies (top 10) plus deterministic comparison metrics to Gemini; returns a verdict, confidence, narrative summary, reasons, metrics interpretation, and per-side notes.
 
@@ -230,19 +230,24 @@ Implementation lives in [`src/lib/ai/compare/`](src/lib/ai/compare/) (config, pa
 
 ### PDF export (comparison report)
 
-After **Compare queries**, click **Export report** in the **Comparison summary** header. The Compare tab stays open; a new browser tab opens at `/compare/report`, builds a PDF client-side with [`@react-pdf/renderer`](https://react-pdf.org/), and shows it inline (with **Download PDF**).
+After **Compare queries**, use the **Technical** / **Business** audience selector and click **Export report** in the **Comparison summary** header. The Compare tab stays open; a new browser tab opens at `/compare/report`, builds a PDF client-side with [`@react-pdf/renderer`](https://react-pdf.org/), and shows it inline (with **Download PDF**).
+
+| Audience | Behavior |
+| -------- | -------- |
+| **Technical** (default) | Same export as before — deterministic metrics and Solr query details; no Gemini call |
+| **Business** | Gemini translates the comparison into executive-friendly copy (`POST /api/compare/translate-report`); same PDF layout and numeric metrics; **disabled** without `GEMINI_API_KEY` |
 
 | PDF section | Contents |
 | ----------- | -------- |
-| Cover | Product name, core, endpoint, shared search term, timestamp |
-| Introduction | Source A vs B labels, template vs URL strategy, compiled `q` / `fq` / `bq` |
-| Technical summary | Same metrics table and overlap/heuristic notes as the UI |
-| AI summary | Full Gemini evaluation if you ran **Evaluate relevance (AI)**; otherwise a short “not performed” note |
+| Cover | Product name, core, endpoint, shared search term, timestamp (business: executive subtitle/context from Gemini) |
+| Introduction | Source A vs B labels and strategy (technical: compiled `q` / `fq` / `bq`; business: plain-language descriptions) |
+| Technical summary | Same metrics table and overlap/heuristic notes as the UI (business: optional executive findings bullets) |
+| AI summary | Full Gemini evaluation if you ran **Evaluate relevance (AI)**; otherwise a short “not performed” note (business: recommendation block in plain language) |
 | Appendix | Top 10 per side (rank, id, score, short field snippets) |
 
-Report data is passed via **`localStorage`** (same origin, shared across tabs). A new tab cannot read `sessionStorage` from the Compare tab, so export uses `localStorage` briefly and clears the key after the report page reads it.
+Report data is passed via **`localStorage`** (same origin, shared across tabs). A new tab cannot read `sessionStorage` from the Compare tab, so export uses `localStorage` briefly and clears the key after the report page reads it. Business exports download as `compare-report-business-{date}.pdf`.
 
-Code: [`src/lib/compare/report-payload.ts`](src/lib/compare/report-payload.ts), [`src/components/compare/compare-report-document.tsx`](src/components/compare/compare-report-document.tsx), [`src/app/compare/report/page.tsx`](src/app/compare/report/page.tsx).
+Code: [`src/lib/compare/report-payload.ts`](src/lib/compare/report-payload.ts), [`src/lib/ai/compare/report-translator.ts`](src/lib/ai/compare/report-translator.ts), [`src/components/compare/compare-report-document.tsx`](src/components/compare/compare-report-document.tsx), [`src/app/compare/report/page.tsx`](src/app/compare/report/page.tsx).
 
 ## Analyze tab
 
@@ -266,6 +271,7 @@ Server routes under [`src/app/api/`](src/app/api/) (for contributors):
 | `/api/presets/templates/[id]` | GET, DELETE | Fetch or delete a single template |
 | `/api/presets/migrate-local` | POST | One-time `localStorage` → SQLite migration |
 | `/api/compare/evaluate` | GET, POST | AI availability check + relevance evaluation |
+| `/api/compare/translate-report` | GET, POST | AI availability check + business-audience PDF narrative translation |
 
 ## Regenerate seed JSON
 

@@ -4,7 +4,15 @@ import { useState, type ReactNode } from "react";
 import { ChevronRight, FileDown, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { AiCompareSummary } from "@/lib/ai/compare/types";
+import type { ReportAudience } from "@/lib/compare/report-payload";
 import type { CompareMetricsResult } from "@/lib/query/compare-metrics";
 import type { SelectResponse } from "@/types/solr";
 import { cn } from "@/lib/utils";
@@ -61,7 +69,7 @@ export function CompareSummary({
   aiAvailable: boolean;
   aiResult: AiCompareSummary | null;
   onAiResultChange: (result: AiCompareSummary | null) => void;
-  onExportReport: () => void;
+  onExportReport: (audience: ReportAudience) => void;
   exportLoading?: boolean;
 }) {
   const aiResetKey = metrics
@@ -82,6 +90,7 @@ export function CompareSummary({
     <div className="space-y-3">
       <ComparisonMetricsSummary
         metrics={metrics}
+        aiAvailable={aiAvailable}
         onExportReport={onExportReport}
         exportLoading={exportLoading}
       />
@@ -100,39 +109,80 @@ export function CompareSummary({
 
 function ComparisonMetricsSummary({
   metrics,
+  aiAvailable,
   onExportReport,
   exportLoading,
 }: {
   metrics: CompareMetricsResult;
-  onExportReport: () => void;
+  aiAvailable: boolean;
+  onExportReport: (audience: ReportAudience) => void;
   exportLoading?: boolean;
 }) {
   const { sideA, sideB, overlap, heuristics, hints } = metrics;
+  const [reportAudience, setReportAudience] =
+    useState<ReportAudience>("technical");
 
-  const exportButton = (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="h-8 text-xs"
-      disabled={!!exportLoading}
-      onClick={onExportReport}
-      title="Open a PDF evaluation report in a new tab"
-    >
-      {exportLoading ? (
-        <Loader2 className="size-3.5 animate-spin" />
-      ) : (
-        <FileDown className="size-3.5" />
-      )}
-      Export report
-    </Button>
+  const accentButtonClass = cn(
+    "h-9 text-sm",
+    "border-transparent bg-[var(--solr-accent)] text-[var(--solr-accent-fg)]",
+    "shadow-sm hover:bg-[var(--solr-accent-hover)]",
+    "focus-visible:border-[var(--solr-accent)] focus-visible:ring-[var(--solr-accent)]/35"
+  );
+
+  const exportControls = (
+    <div className="flex items-center gap-2">
+      <Select
+        value={reportAudience}
+        onValueChange={(v) => setReportAudience(v as ReportAudience)}
+        disabled={!!exportLoading}
+      >
+        <SelectTrigger
+          className="h-9 w-[7.5rem] text-xs"
+          title={
+            !aiAvailable
+              ? "Business reports require GEMINI_API_KEY on the server"
+              : "Report audience"
+          }
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="technical">Technical</SelectItem>
+          <SelectItem
+            value="business"
+            disabled={!aiAvailable}
+            title={
+              !aiAvailable
+                ? "Set GEMINI_API_KEY in .env.local on the server"
+                : undefined
+            }
+          >
+            Business
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      <Button
+        type="button"
+        className={accentButtonClass}
+        disabled={!!exportLoading}
+        onClick={() => onExportReport(reportAudience)}
+        title="Open a PDF evaluation report in a new tab"
+      >
+        {exportLoading ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <FileDown className="size-4" />
+        )}
+        Export report
+      </Button>
+    </div>
   );
 
   return (
     <CollapsiblePanel
       title="Comparison summary"
       defaultOpen
-      actions={exportButton}
+      actions={exportControls}
     >
       <div className="overflow-x-auto">
         <table className="w-full min-w-[32rem] border-collapse text-left text-xs">

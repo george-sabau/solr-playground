@@ -135,6 +135,8 @@ function compareTemplatePayloadA() {
       searchText: "",
       combineWith: "OR",
       edismax: { mm: "", min: "", tie: "", qfOverride: "" },
+      filterQueries: [],
+      boostQueries: [],
       fields: [
         {
           id: "",
@@ -164,6 +166,8 @@ function compareTemplatePayloadB() {
       searchText: "",
       combineWith: "OR",
       edismax: { mm: "", min: "", tie: "", qfOverride: "" },
+      filterQueries: [],
+      boostQueries: [],
       fields: [
         {
           id: "",
@@ -350,7 +354,14 @@ async function captureCompareAiScreenshot(page) {
   }
 
   await aiBtn.click();
-  await page.getByText("AI verdict:").waitFor({ timeout: 90_000 });
+  try {
+    await page.getByText("AI verdict:").waitFor({ timeout: 90_000 });
+  } catch {
+    console.warn(
+      "Skipping compare-ai-summary.png — AI evaluation timed out (Gemini slow or unavailable)"
+    );
+    return;
+  }
   await page.waitForTimeout(500);
 
   const aiPanel = page

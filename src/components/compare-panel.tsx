@@ -16,6 +16,8 @@ import type { AiCompareSummary } from "@/lib/ai/compare/types";
 import {
   buildCompareReportPayload,
   serializeCompareReportPayload,
+  type BusinessReportNarrative,
+  type ReportAudience,
 } from "@/lib/compare/report-payload";
 import { compileBuilderSearch } from "@/lib/query/compile";
 import { computeCompareMetrics } from "@/lib/query/compare-metrics";
@@ -183,37 +185,84 @@ export function ComparePanel() {
     }
   }, [core, columnA, columnB, searchText]);
 
-  const handleExportReport = useCallback(() => {
-    if (!core || !planA || !planB || !metrics) {
-      toast.error("Run Compare queries first.");
-      return;
-    }
-    setExportLoading(true);
-    try {
-      const payload = buildCompareReportPayload({
-        core,
-        endpointLabel,
-        sharedSearch: searchText,
-        columnA,
-        columnB,
-        planA,
-        planB,
-        responseA,
-        responseB,
-        metrics,
-        ai: aiEvaluation,
-      });
-      const stored = serializeCompareReportPayload(payload);
-      if (!stored.ok) {
-        toast.error(stored.reason);
+  const handleExportReport = useCallback(
+    async (audience: ReportAudience) => {
+      if (!core || !planA || !planB || !metrics) {
+        toast.error("Run Compare queries first.");
         return;
       }
-      const reportUrl = new URL("/compare/report", window.location.origin).href;
-      window.open(reportUrl, "_blank", "noopener,noreferrer");
-    } finally {
-      setExportLoading(false);
-    }
-  }, [
+      setExportLoading(true);
+      try {
+        let business: BusinessReportNarrative | null = null;
+
+        const basePayload = buildCompareReportPayload({
+          core,
+          endpointLabel,
+          sharedSearch: searchText,
+          columnA,
+          columnB,
+          planA,
+          planB,
+          responseA,
+          responseB,
+          metrics,
+          ai: aiEvaluation,
+        });
+
+        if (audience === "business") {
+          toast.message("Preparing business report…");
+          const res = await fetch("/api/compare/translate-report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ payload: basePayload }),
+          });
+          const body = (await res.json()) as {
+            error?: string;
+            narrative?: BusinessReportNarrative;
+          };
+          if (!res.ok) {
+            throw new Error(
+              body.error ?? `Business report translation failed (${res.status})`
+            );
+          }
+          if (!body.narrative) {
+            throw new Error("No business narrative returned.");
+          }
+          business = body.narrative;
+        }
+
+        const payload = buildCompareReportPayload({
+          core,
+          endpointLabel,
+          sharedSearch: searchText,
+          columnA,
+          columnB,
+          planA,
+          planB,
+          responseA,
+          responseB,
+          metrics,
+          ai: aiEvaluation,
+          audience,
+          business,
+        });
+        const stored = serializeCompareReportPayload(payload);
+        if (!stored.ok) {
+          toast.error(stored.reason);
+          return;
+        }
+        const reportUrl = new URL("/compare/report", window.location.origin)
+          .href;
+        window.open(reportUrl, "_blank", "noopener,noreferrer");
+      } catch (e) {
+        const msg =
+          e instanceof Error ? e.message : "Failed to export business report";
+        toast.error(msg);
+      } finally {
+        setExportLoading(false);
+      }
+    },
+    [
     core,
     planA,
     planB,
@@ -225,7 +274,8 @@ export function ComparePanel() {
     responseA,
     responseB,
     aiEvaluation,
-  ]);
+  ]
+  );
 
   if (!core) {
     return (
