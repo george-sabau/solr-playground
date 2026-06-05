@@ -2,7 +2,7 @@
 
 Read this file at the start of agent sessions before changing dev tooling, persistence, or CSS/PostCSS.
 
-## Stable baseline (2026-06-03, evening)
+## Stable baseline (2026-06-05)
 
 Known-good working copy on Windows with dual Node (22 + 24):
 
@@ -50,7 +50,7 @@ Known-good working copy on Windows with dual Node (22 + 24):
 
 ## Session log (newest first)
 
-### 2026-06-03 — Business-audience PDF export + report polish
+### 2026-06-05 — Business-audience PDF export + report polish
 
 - **Feature**: Compare **Export report** now has a **Technical / Business** audience selector beside the green export button. Technical keeps the existing flow (no Gemini). Business calls `POST /api/compare/translate-report` server-side, attaches a `BusinessReportNarrative` to the v2 report payload, and renders the same branded PDF layout with executive-friendly copy.
 - **Data**: [`report-payload.ts`](src/lib/compare/report-payload.ts) bumped to `version: 2` with `audience` + `business`; v1 payloads migrate to `audience: "technical"`. Business filename prefix: `compare-report-business-{date}.pdf`.
@@ -104,4 +104,4 @@ Known-good working copy on Windows with dual Node (22 + 24):
 
 ---
 
-When you fix a non-obvious bug, append a dated entry here (issue → fix → lesson).
+When you fix a non-obvious bug, append a dated entry here (issue → fix → lesson). Use the **actual session date** (YYYY-MM-DD), not a stale date from earlier context.
